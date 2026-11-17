@@ -8,7 +8,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
-  <!-- Biblioteca jsPDF para gerar o PDF A4 direto no navegador/celular -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -155,6 +154,16 @@
       </section>
 
     </main>
+
+    <!-- RODAPÉ COM LINKS PARA OS TERMOS -->
+    <footer class="app-footer center cluster">
+      <span class="text-dim">Certificados Skylab &copy; 2026</span>
+      <div class="cluster">
+        <a href="termo-uso.html" class="footer-link">Termos de Uso</a>
+        <span class="text-dim">•</span>
+        <a href="termo-privacidade.html" class="footer-link">Política de Privacidade</a>
+      </div>
+    </footer>
   </div>
 
   <!-- MODAL PARA EDITAR META E CURSO -->
@@ -193,6 +202,64 @@
         </button>
       </div>
       <div id="preview-body" class="preview-container centered"></div>
+    </div>
+  </dialog>
+
+  <!-- MODAL OBRIGATÓRIO PÓS-LOGIN: TERMOS DE USO E POLÍTICA DE PRIVACIDADE -->
+  <dialog id="legal-modal" class="modal modal--legal glass-card">
+    <div class="stack">
+      <div class="brand-pill" style="align-self: flex-start;">
+        <span class="status-dot"></span>
+        <i class="ph-fill ph-shield-check"></i>
+        <span>TRANSPARÊNCIA & PRIVACIDADE</span>
+      </div>
+
+      <div>
+        <h3>Termos de Uso e Política de Privacidade</h3>
+        <p class="text-dim" style="margin-top: 4px;">
+          Antes de acessar o seu cofre de certificados no <strong>certificados-skylab</strong>, confira e aceite os nossos documentos legais:
+        </p>
+      </div>
+
+      <!-- Cards que puxam para os 2 arquivos HTML -->
+      <div class="legal-links-grid">
+        <a href="termo-uso.html" class="legal-doc-card">
+          <div class="legal-doc-card__icon">
+            <i class="ph-duotone ph-file-text"></i>
+          </div>
+          <div class="legal-doc-card__info">
+            <strong>Termos de Uso</strong>
+            <span>Regras de utilização do repositório e geração de relatórios</span>
+          </div>
+          <i class="ph-bold ph-arrow-up-right legal-doc-card__arrow"></i>
+        </a>
+
+        <a href="termo-privacidade.html" class="legal-doc-card">
+          <div class="legal-doc-card__icon">
+            <i class="ph-duotone ph-lock-key"></i>
+          </div>
+          <div class="legal-doc-card__info">
+            <strong>Política de Privacidade</strong>
+            <span>Proteção de dados, cookies e compromisso do usuário</span>
+          </div>
+          <i class="ph-bold ph-arrow-up-right legal-doc-card__arrow"></i>
+        </a>
+      </div>
+
+      <!-- Resumo rápido rolável dentro da própria box -->
+      <div class="legal-summary-box">
+        <p><strong>Resumo de Privacidade & Uso:</strong> Solicitamos informações pessoais apenas quando necessário para fornecer o serviço, com o seu conhecimento e consentimento. Seus certificados são armazenados de forma protegida na sua conta e não compartilhamos dados de identificação pessoal com terceiros, exceto quando exigido por lei.</p>
+      </div>
+
+      <label class="legal-checkbox">
+        <input type="checkbox" id="chk-accept-terms" />
+        <span>Li e concordo com os <a href="termo-uso.html" class="text-cyan">Termos de Uso</a> e com a <a href="termo-privacidade.html" class="text-cyan">Política de Privacidade</a>.</span>
+      </label>
+
+      <button type="button" id="btn-accept-terms" class="btn btn--primary" style="width: 100%;" disabled>
+        <i class="ph-bold ph-check-circle"></i>
+        <span>Aceitar e Acessar Meu Painel</span>
+      </button>
     </div>
   </dialog>
 

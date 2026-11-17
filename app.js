@@ -200,7 +200,6 @@ async function generateCompletePdfReport(profile, certificates) {
   const percent = quota > 0 ? Math.min(Math.round((totalDone / quota) * 100), 100) : 0;
   const emissionDate = new Date().toLocaleDateString("pt-BR");
 
-  // 1. Cabeçalho Institucional (Página 1)
   doc.setFillColor(15, 23, 42);
   doc.rect(0, 0, 210, 40, "F");
 
@@ -218,7 +217,6 @@ async function generateCompletePdfReport(profile, certificates) {
   doc.setFontSize(10);
   doc.text(`Curso: ${profile.course || "Graduação"}  |  Estudante: ${profile.email}  |  Emissão: ${emissionDate}`, 14, 33);
 
-  // 2. Quadro de Resumo de Métricas
   doc.setFillColor(241, 245, 249);
   doc.setDrawColor(203, 213, 225);
   doc.roundedRect(14, 48, 182, 24, 3, 3, "FD");
@@ -241,7 +239,6 @@ async function generateCompletePdfReport(profile, certificates) {
   doc.setTextColor(15, 23, 42);
   doc.text(`${percent}%`, 170, 65);
 
-  // 3. Tabela de Certificados Computados
   let y = 84;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
@@ -296,7 +293,6 @@ async function generateCompletePdfReport(profile, certificates) {
   doc.text("TOTAL GERAL COMPUTADO", 18, y + 6);
   doc.text(`${totalDone}h / ${quota}h`, 175, y + 6);
 
-  // 4. Páginas de Anexos com as Imagens dos Certificados
   for (let i = 0; i < certificates.length; i++) {
     const cert = certificates[i];
     if (!cert.fileData || !cert.fileData.startsWith("data:image")) continue;
@@ -390,6 +386,7 @@ async function authenticateWithGoogle(registrationMeta = null) {
     email: user.email,
     course: registrationMeta?.course || "Graduação",
     quota: Number(registrationMeta?.quota || 200),
+    termsAccepted: false,
     updatedAt: Date.now()
   };
 
@@ -399,6 +396,7 @@ async function authenticateWithGoogle(registrationMeta = null) {
     await setDoc(userRef, {
       course: profile.course,
       quota: profile.quota,
+      termsAccepted: Boolean(profile.termsAccepted),
       updatedAt: Date.now()
     }, { merge: true });
   }
@@ -454,7 +452,7 @@ if (currentPage === "dashboard") {
 
 /**
  * ============================================================================
- * 8. PAINEL PRINCIPAL (DASHBOARD)
+ * 8. PAINEL PRINCIPAL (DASHBOARD + MODAL DE TERMOS PÓS-LOGIN)
  * ============================================================================
  */
 async function initDashboard() {
@@ -492,6 +490,48 @@ async function initDashboard() {
   const previewTitle = document.getElementById("preview-title");
   const previewBody = document.getElementById("preview-body");
   const btnClosePreview = document.getElementById("btn-close-preview");
+
+  // Modal de Termos de Uso e Privacidade Pós-Login
+  const legalModal = document.getElementById("legal-modal");
+  const chkAcceptTerms = document.getElementById("chk-accept-terms");
+  const btnAcceptTerms = document.getElementById("btn-accept-terms");
+
+  const termsKey = `chronos_terms_accepted_${profile.uid}`;
+  const hasAcceptedTerms = Boolean(profile.termsAccepted || localStorage.getItem(termsKey) === "true");
+
+  if (!hasAcceptedTerms && legalModal) {
+    // Impede fechar com a tecla ESC sem aceitar
+    legalModal.addEventListener("cancel", (e) => e.preventDefault());
+    legalModal.showModal();
+
+    chkAcceptTerms.addEventListener("change", () => {
+      btnAcceptTerms.disabled = !chkAcceptTerms.checked;
+    });
+
+    btnAcceptTerms.addEventListener("click", async () => {
+      if (!chkAcceptTerms.checked) return;
+
+      profile.termsAccepted = true;
+      profile.termsAcceptedAt = Date.now();
+      localStorage.setItem(termsKey, "true");
+      localStorage.setItem("chronos_user", JSON.stringify(profile));
+      legalModal.close();
+
+      try {
+        const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        const { fbDb } = await initFirebaseModules();
+        await setDoc(doc(fbDb, "users", profile.uid), {
+          course: profile.course || "Graduação",
+          quota: Number(profile.quota) || 200,
+          termsAccepted: true,
+          termsAcceptedAt: profile.termsAcceptedAt,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (err) {
+        console.warn("Erro ao registrar aceite no Firestore:", err);
+      }
+    });
+  }
 
   const CIRCUMFERENCE = 2 * Math.PI * 92;
   let certificates = await getLocalCerts(profile.uid);
