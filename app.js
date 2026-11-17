@@ -16,13 +16,13 @@ const isFirebaseReady = Boolean(firebaseConfig.apiKey && firebaseConfig.projectI
 
 /**
  * ============================================================================
- * 2. COMPRESSOR AUTOMÁTICO DE IMAGEM (SALVA DIRETO NO FIRESTORE SEM STORAGE)
+ * 2. COMPRESSOR AUTOMÁTICO DE IMAGEM
  * ============================================================================
  */
 async function compressFileToDataUrl(file) {
   if (file.type === "application/pdf") {
     if (file.size > 700 * 1024) {
-      throw new Error("Para PDFs acima de 700KB, envie um print ou foto do certificado para compressão automática.");
+      throw new Error("Para PDFs acima de 700KB, tire um print ou foto do certificado para compressão automática.");
     }
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -177,7 +177,7 @@ async function deleteLocalCert(id) {
 
 /**
  * ============================================================================
- * 5. GERADOR DE RELATÓRIO COMPLETO EM PDF (TABELA DE HORAS + FOTOS ANEXADAS)
+ * 5. GERADOR DE RELATÓRIO COMPLETO EM PDF
  * ============================================================================
  */
 async function generateCompletePdfReport(profile, certificates) {
@@ -391,7 +391,7 @@ async function authenticateWithGoogle(registrationMeta = null) {
   };
 
   if (snap.exists() && !registrationMeta) {
-    profile = { ...profile, ...snap.data() };
+    profile = { ...profile, ...snap.data(), email: user.email };
   } else {
     await setDoc(userRef, {
       course: profile.course,
@@ -448,247 +448,11 @@ if (currentPage === "register") {
 
 if (currentPage === "dashboard") {
   initDashboard();
-  // Modal de Relatar Bugs ou Enviar Dicas
-  const feedbackModal = document.getElementById("feedback-modal");
-  const feedbackForm = document.getElementById("feedback-form");
-  const btnOpenFeedback = document.getElementById("btn-open-feedback");
-  const btnCloseFeedback = document.getElementById("btn-close-feedback");
-  const btnSubmitFeedback = document.getElementById("btn-submit-feedback");
-  const btnFeedbackText = document.getElementById("btn-feedback-text");
-  const feedbackStatus = document.getElementById("feedback-status");
-
-  if (btnOpenFeedback && feedbackModal) {
-    btnOpenFeedback.addEventListener("click", () => {
-      feedbackStatus.hidden = true;
-      feedbackModal.showModal();
-    });
-
-    btnCloseFeedback.addEventListener("click", () => {
-      feedbackModal.close();
-    });
-
-    feedbackForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const typeInput = feedbackForm.querySelector('input[name="feedback-type"]:checked');
-      const type = typeInput ? typeInput.value : "dica";
-      const area = document.getElementById("feedback-area").value;
-      const message = document.getElementById("feedback-message").value.trim();
-
-      if (!message) return;
-
-      try {
-        btnSubmitFeedback.disabled = true;
-        btnFeedbackText.textContent = "Enviando...";
-
-        const { collection, addDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-        const { fbDb } = await initFirebaseModules();
-
-        await addDoc(collection(fbDb, "feedbacks"), {
-          uid: profile.uid,
-          email: profile.email || "anônimo",
-          course: profile.course || "Não informado",
-          type,
-          area,
-          message,
-          userAgent: navigator.userAgent,
-          createdAt: Date.now()
-        });
-
-        feedbackStatus.textContent = "Valeu! Seu relato foi enviado com sucesso.";
-        feedbackStatus.hidden = false;
-        feedbackForm.reset();
-
-        setTimeout(() => {
-          feedbackModal.close();
-          feedbackStatus.hidden = true;
-        }, 1400);
-      } catch (err) {
-        alert("Não foi possível enviar agora. Verifique se publicou as novas regras do Firestore.");
-        console.error("Erro ao salvar feedback:", err);
-      } finally {
-        btnSubmitFeedback.disabled = false;
-        btnFeedbackText.textContent = "Enviar Mensagem";
-      }
-    });
-  }
 }
-// ==========================================================================
-  // PAINEL SECRETO DO ADMINISTRADOR (EXCLUSIVO: pedroeliasm08@gmail.com)
-  // ==========================================================================
-  const ADMIN_EMAIL = "pedroeliasm08@gmail.com";
-  const btnAdminPanel = document.getElementById("btn-admin-panel");
-  const adminBadgeCount = document.getElementById("admin-badge-count");
-  const adminModal = document.getElementById("admin-modal");
-  const btnCloseAdmin = document.getElementById("btn-close-admin");
-  const adminFeedbackList = document.getElementById("admin-feedback-list");
 
-  let allFeedbacks = [];
-
-  if (profile.email && profile.email.toLowerCase() === ADMIN_EMAIL && btnAdminPanel) {
-    btnAdminPanel.hidden = false;
-
-    async function loadAdminFeedbacks() {
-      try {
-        const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-        const { fbDb } = await initFirebaseModules();
-        const snap = await getDocs(collection(fbDb, "feedbacks"));
-
-        allFeedbacks = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => b.createdAt - a.createdAt);
-
-        const pendingCount = allFeedbacks.filter((f) => f.status !== "respondido").length;
-        adminBadgeCount.textContent = String(pendingCount);
-        renderAdminTickets();
-      } catch (err) {
-        console.warn("Erro ao carregar relatos do admin:", err);
-      }
-    }
-
-    function renderAdminTickets() {
-      if (allFeedbacks.length === 0) {
-        adminFeedbackList.innerHTML = `
-          <div class="text-dim" style="text-align: center; padding: 32px;">
-            Nenhum bug ou dica enviado pelos alunos até o momento.
-          </div>
-        `;
-        return;
-      }
-
-      adminFeedbackList.innerHTML = allFeedbacks
-        .map((item) => {
-          const isBug = item.type === "bug";
-          const isReplied = item.status === "respondido";
-          const dateStr = new Date(item.createdAt).toLocaleString("pt-BR");
-
-          return `
-            <article class="admin-ticket ${isReplied ? "admin-ticket--replied" : ""}" data-ticket-id="${item.id}">
-              <div class="admin-ticket__header">
-                <div class="cluster">
-                  <span class="badge ${isBug ? "badge--bug" : ""}">
-                    ${isBug ? "BUG" : "DICA"} • ${escapeHtml(item.area || "Geral")}
-                  </span>
-                  <strong style="font-size: 13px;">${escapeHtml(item.email)}</strong>
-                  <span class="text-dim">(${escapeHtml(item.course || "Curso não informado")})</span>
-                </div>
-                <div class="cluster">
-                  <span class="mono-tag">${dateStr}</span>
-                  ${isReplied ? '<span class="badge badge--done">Respondido</span>' : ""}
-                </div>
-              </div>
-
-              <div class="admin-ticket__msg">${escapeHtml(item.message)}</div>
-
-              <div class="admin-reply-area">
-                <label class="field__label">Sua resposta para ${escapeHtml(item.email)}:</label>
-                <textarea
-                  class="field__input field__textarea"
-                  rows="2"
-                  id="reply-text-${item.id}"
-                  placeholder="Digite sua resposta aqui para enviar direto ao e-mail do aluno..."
-                >${escapeHtml(item.adminReply || "")}</textarea>
-
-                <div class="cluster" style="justify-content: flex-end; margin-top: 4px;">
-                  <button type="button" class="btn btn--ghost" data-admin-action="mailto" data-id="${item.id}" title="Abrir app de e-mail padrão">
-                    <i class="ph ph-envelope-simple"></i>
-                    <span>App de E-mail</span>
-                  </button>
-                  <button type="button" class="btn btn--primary" data-admin-action="gmail" data-id="${item.id}">
-                    <i class="ph-bold ph-paper-plane-tilt"></i>
-                    <span>Enviar pelo Gmail & Marcar Respondido</span>
-                  </button>
-                  <button type="button" class="btn btn--icon" data-admin-action="delete-ticket" data-id="${item.id}" title="Excluir relato">
-                    <i class="ph ph-trash"></i>
-                  </button>
-                </div>
-              </div>
-            </article>
-          `;
-        })
-        .join("");
-    }
-
-    // Carrega o contador assim que você entra no painel
-    loadAdminFeedbacks();
-
-    btnAdminPanel.addEventListener("click", async () => {
-      await loadAdminFeedbacks();
-      adminModal.showModal();
-    });
-
-    btnCloseAdmin.addEventListener("click", () => adminModal.close());
-
-    adminFeedbackList.addEventListener("click", async (e) => {
-      const btn = e.target.closest("button[data-admin-action]");
-      if (!btn) return;
-
-      const { adminAction, id } = btn.dataset;
-      const ticket = allFeedbacks.find((t) => t.id === id);
-      if (!ticket) return;
-
-      if (adminAction === "gmail" || adminAction === "mailto") {
-        const replyInput = document.getElementById(`reply-text-${id}`);
-        const replyText = replyInput ? replyInput.value.trim() : "";
-
-        if (!replyText) {
-          alert("Digite uma resposta no campo de texto antes de enviar o e-mail.");
-          return;
-        }
-
-        const subject = encodeURIComponent(
-          `[Chronos Acadêmico] Resposta sobre seu relato (${ticket.area || ticket.type.toUpperCase()})`
-        );
-        const body = encodeURIComponent(
-          `Olá!\n\nRecebemos a sua mensagem enviada no Chronos Acadêmico:\n"${ticket.message}"\n\n` +
-          `--- Resposta da Equipe Chronos ---\n${replyText}\n\n` +
-          `Atenciosamente,\nPedro Elias — Chronos Acadêmico\nhttps://certificados-skylab.vercel.app/`
-        );
-
-        // Abre o Gmail Web com tudo preenchido ou o cliente de e-mail nativo
-        if (adminAction === "gmail") {
-          const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(ticket.email)}&su=${subject}&body=${body}`;
-          window.open(gmailUrl, "_blank", "noopener,noreferrer");
-        } else {
-          window.location.href = `mailto:${encodeURIComponent(ticket.email)}?subject=${subject}&body=${body}`;
-        }
-
-        // Salva a resposta e marca como "respondido" no Firestore
-        try {
-          const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-          const { fbDb } = await initFirebaseModules();
-          await updateDoc(doc(fbDb, "feedbacks", id), {
-            status: "respondido",
-            adminReply: replyText,
-            repliedAt: Date.now()
-          });
-          ticket.status = "respondido";
-          ticket.adminReply = replyText;
-          const pendingCount = allFeedbacks.filter((f) => f.status !== "respondido").length;
-          adminBadgeCount.textContent = String(pendingCount);
-          renderAdminTickets();
-        } catch (err) {
-          console.warn("Erro ao atualizar status do ticket:", err);
-        }
-      }
-
-      if (adminAction === "delete-ticket") {
-        try {
-          const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-          const { fbDb } = await initFirebaseModules();
-          await deleteDoc(doc(fbDb, "feedbacks", id));
-          allFeedbacks = allFeedbacks.filter((t) => t.id !== id);
-          const pendingCount = allFeedbacks.filter((f) => f.status !== "respondido").length;
-          adminBadgeCount.textContent = String(pendingCount);
-          renderAdminTickets();
-        } catch (err) {
-          console.warn("Erro ao excluir ticket:", err);
-        }
-      }
-    });
-  }
 /**
  * ============================================================================
- * 8. PAINEL PRINCIPAL (DASHBOARD + MODAL DE TERMOS PÓS-LOGIN)
+ * 8. PAINEL PRINCIPAL + ABA EXCLUSIVA FAQ/BUGS + ADMIN (SÓ pedroeliasm08@gmail.com)
  * ============================================================================
  */
 async function initDashboard() {
@@ -727,7 +491,27 @@ async function initDashboard() {
   const previewBody = document.getElementById("preview-body");
   const btnClosePreview = document.getElementById("btn-close-preview");
 
-  // Modal de Termos de Uso e Privacidade Pós-Login
+  // Controle de Abas (Painel de Horas vs Aba Exclusiva FAQ & Bugs/Dicas)
+  const tabButtons = document.querySelectorAll("[data-tab-btn]");
+  const tabPainel = document.getElementById("tab-painel");
+  const tabFaq = document.getElementById("tab-faq");
+
+  tabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const targetId = btn.dataset.tabBtn;
+      tabButtons.forEach((b) => b.classList.toggle("active", b === btn));
+
+      if (targetId === "tab-faq") {
+        tabPainel.hidden = true;
+        tabFaq.hidden = false;
+      } else {
+        tabPainel.hidden = false;
+        tabFaq.hidden = true;
+      }
+    });
+  });
+
+  // Modal de Termos Pós-Login
   const legalModal = document.getElementById("legal-modal");
   const chkAcceptTerms = document.getElementById("chk-accept-terms");
   const btnAcceptTerms = document.getElementById("btn-accept-terms");
@@ -736,7 +520,6 @@ async function initDashboard() {
   const hasAcceptedTerms = Boolean(profile.termsAccepted || localStorage.getItem(termsKey) === "true");
 
   if (!hasAcceptedTerms && legalModal) {
-    // Impede fechar com a tecla ESC sem aceitar
     legalModal.addEventListener("cancel", (e) => e.preventDefault());
     legalModal.showModal();
 
@@ -1034,6 +817,238 @@ async function initDashboard() {
     localStorage.removeItem("chronos_user");
     window.location.href = "login.html";
   });
+
+  // ==========================================================================
+  // FORMULÁRIO DE BUGS E DICAS (INTEGRADO DENTRO DA ABA EXCLUSIVA FAQ)
+  // ==========================================================================
+  const feedbackForm = document.getElementById("feedback-form");
+  const btnSubmitFeedback = document.getElementById("btn-submit-feedback");
+  const btnFeedbackText = document.getElementById("btn-feedback-text");
+  const feedbackStatus = document.getElementById("feedback-status");
+
+  if (feedbackForm) {
+    feedbackForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const typeInput = feedbackForm.querySelector('input[name="feedback-type"]:checked');
+      const type = typeInput ? typeInput.value : "dica";
+      const area = document.getElementById("feedback-area").value;
+      const message = document.getElementById("feedback-message").value.trim();
+
+      if (!message) return;
+
+      try {
+        btnSubmitFeedback.disabled = true;
+        btnFeedbackText.textContent = "Enviando...";
+
+        const { collection, addDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        const { fbDb } = await initFirebaseModules();
+
+        await addDoc(collection(fbDb, "feedbacks"), {
+          uid: profile.uid,
+          email: profile.email || "anônimo",
+          course: profile.course || "Não informado",
+          type,
+          area,
+          message,
+          userAgent: navigator.userAgent,
+          createdAt: Date.now()
+        });
+
+        feedbackStatus.textContent = "Valeu! Seu relato foi enviado com sucesso.";
+        feedbackStatus.hidden = false;
+        feedbackForm.reset();
+
+        setTimeout(() => {
+          feedbackStatus.hidden = true;
+        }, 3000);
+      } catch (err) {
+        alert("Não foi possível enviar agora. Verifique se publicou as regras da coleção feedbacks no Firestore.");
+        console.error("Erro ao salvar feedback:", err);
+      } finally {
+        btnSubmitFeedback.disabled = false;
+        btnFeedbackText.textContent = "Enviar Relato";
+      }
+    });
+  }
+
+  // ==========================================================================
+  // PAINEL ADMIN BLINDADO (SÓ APARECE SE FOR EXATAMENTE pedroeliasm08@gmail.com)
+  // ==========================================================================
+  const ADMIN_EMAIL = "pedroeliasm08@gmail.com";
+  const btnAdminPanel = document.getElementById("btn-admin-panel");
+  const adminBadgeCount = document.getElementById("admin-badge-count");
+  const adminModal = document.getElementById("admin-modal");
+  const btnCloseAdmin = document.getElementById("btn-close-admin");
+  const adminFeedbackList = document.getElementById("admin-feedback-list");
+
+  const isUserAdmin = Boolean(
+    profile.email && profile.email.trim().toLowerCase() === ADMIN_EMAIL
+  );
+
+  if (!isUserAdmin) {
+    // Remove completamente do DOM para qualquer outra conta (ex: pedroeliasm06@gmail.com)
+    if (btnAdminPanel) btnAdminPanel.remove();
+    if (adminModal) adminModal.remove();
+  } else if (btnAdminPanel && adminModal) {
+    btnAdminPanel.hidden = false;
+    let allFeedbacks = [];
+
+    async function loadAdminFeedbacks() {
+      try {
+        const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        const { fbDb } = await initFirebaseModules();
+        const snap = await getDocs(collection(fbDb, "feedbacks"));
+
+        allFeedbacks = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => b.createdAt - a.createdAt);
+
+        const pendingCount = allFeedbacks.filter((f) => f.status !== "respondido").length;
+        adminBadgeCount.textContent = String(pendingCount);
+        renderAdminTickets();
+      } catch (err) {
+        console.warn("Erro ao carregar relatos do admin:", err);
+      }
+    }
+
+    function renderAdminTickets() {
+      if (allFeedbacks.length === 0) {
+        adminFeedbackList.innerHTML = `
+          <div class="text-dim" style="text-align: center; padding: 32px;">
+            Nenhum bug ou dica enviado pelos alunos até o momento.
+          </div>
+        `;
+        return;
+      }
+
+      adminFeedbackList.innerHTML = allFeedbacks
+        .map((item) => {
+          const isBug = item.type === "bug";
+          const isReplied = item.status === "respondido";
+          const dateStr = new Date(item.createdAt).toLocaleString("pt-BR");
+
+          return `
+            <article class="admin-ticket ${isReplied ? "admin-ticket--replied" : ""}">
+              <div class="admin-ticket__header">
+                <div class="cluster">
+                  <span class="badge ${isBug ? "badge--bug" : ""}">
+                    ${isBug ? "BUG" : "DICA"} • ${escapeHtml(item.area || "Geral")}
+                  </span>
+                  <strong style="font-size: 13px;">${escapeHtml(item.email)}</strong>
+                  <span class="text-dim">(${escapeHtml(item.course || "Curso não informado")})</span>
+                </div>
+                <div class="cluster">
+                  <span class="mono-tag">${dateStr}</span>
+                  ${isReplied ? '<span class="badge badge--done">Respondido</span>' : ""}
+                </div>
+              </div>
+
+              <div class="admin-ticket__msg">${escapeHtml(item.message)}</div>
+
+              <div class="admin-reply-area">
+                <label class="field__label">Sua resposta para ${escapeHtml(item.email)}:</label>
+                <textarea
+                  class="field__input field__textarea"
+                  rows="2"
+                  id="reply-text-${item.id}"
+                  placeholder="Digite sua resposta aqui para enviar direto ao e-mail do aluno..."
+                >${escapeHtml(item.adminReply || "")}</textarea>
+
+                <div class="cluster" style="justify-content: flex-end; margin-top: 4px;">
+                  <button type="button" class="btn btn--ghost" data-admin-action="mailto" data-id="${item.id}">
+                    <i class="ph ph-envelope-simple"></i>
+                    <span>App de E-mail</span>
+                  </button>
+                  <button type="button" class="btn btn--primary" data-admin-action="gmail" data-id="${item.id}">
+                    <i class="ph-bold ph-paper-plane-tilt"></i>
+                    <span>Enviar pelo Gmail & Marcar Respondido</span>
+                  </button>
+                  <button type="button" class="btn btn--icon" data-admin-action="delete-ticket" data-id="${item.id}" title="Excluir relato">
+                    <i class="ph ph-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    loadAdminFeedbacks();
+
+    btnAdminPanel.addEventListener("click", async () => {
+      await loadAdminFeedbacks();
+      adminModal.showModal();
+    });
+
+    btnCloseAdmin.addEventListener("click", () => adminModal.close());
+
+    adminFeedbackList.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-admin-action]");
+      if (!btn) return;
+
+      const { adminAction, id } = btn.dataset;
+      const ticket = allFeedbacks.find((t) => t.id === id);
+      if (!ticket) return;
+
+      if (adminAction === "gmail" || adminAction === "mailto") {
+        const replyInput = document.getElementById(`reply-text-${id}`);
+        const replyText = replyInput ? replyInput.value.trim() : "";
+
+        if (!replyText) {
+          alert("Digite uma resposta no campo de texto antes de enviar o e-mail.");
+          return;
+        }
+
+        const subject = encodeURIComponent(
+          `[Chronos Acadêmico] Resposta sobre seu relato (${ticket.area || ticket.type.toUpperCase()})`
+        );
+        const body = encodeURIComponent(
+          `Olá!\n\nRecebemos a sua mensagem enviada no Chronos Acadêmico:\n"${ticket.message}"\n\n` +
+          `--- Resposta da Equipe Chronos ---\n${replyText}\n\n` +
+          `Atenciosamente,\nPedro Elias — Chronos Acadêmico\nhttps://certificados-skylab.vercel.app/`
+        );
+
+        if (adminAction === "gmail") {
+          const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(ticket.email)}&su=${subject}&body=${body}`;
+          window.open(gmailUrl, "_blank", "noopener,noreferrer");
+        } else {
+          window.location.href = `mailto:${encodeURIComponent(ticket.email)}?subject=${subject}&body=${body}`;
+        }
+
+        try {
+          const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+          const { fbDb } = await initFirebaseModules();
+          await updateDoc(doc(fbDb, "feedbacks", id), {
+            status: "respondido",
+            adminReply: replyText,
+            repliedAt: Date.now()
+          });
+          ticket.status = "respondido";
+          ticket.adminReply = replyText;
+          const pendingCount = allFeedbacks.filter((f) => f.status !== "respondido").length;
+          adminBadgeCount.textContent = String(pendingCount);
+          renderAdminTickets();
+        } catch (err) {
+          console.warn("Erro ao atualizar status do ticket:", err);
+        }
+      }
+
+      if (adminAction === "delete-ticket") {
+        try {
+          const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+          const { fbDb } = await initFirebaseModules();
+          await deleteDoc(doc(fbDb, "feedbacks", id));
+          allFeedbacks = allFeedbacks.filter((t) => t.id !== id);
+          const pendingCount = allFeedbacks.filter((f) => f.status !== "respondido").length;
+          adminBadgeCount.textContent = String(pendingCount);
+          renderAdminTickets();
+        } catch (err) {
+          console.warn("Erro ao excluir ticket:", err);
+        }
+      }
+    });
+  }
 }
 
 function escapeHtml(str) {

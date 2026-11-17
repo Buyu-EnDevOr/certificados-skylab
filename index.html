@@ -14,70 +14,39 @@
 <body data-page="dashboard">
 
   <div class="app-layout">
-    <!-- TOPBAR -->
+    <!-- TOPBAR ÚNICA (SEM DUPLICAÇÃO) -->
     <header class="topbar glass-card">
       <div class="cluster">
         <div class="brand-icon">
           <i class="ph-fill ph-student"></i>
         </div>
-        <a href="faq.html" class="btn btn--ghost" title="Dúvidas Frequentes">
-          <i class="ph-bold ph-question"></i>
-          <span>Dúvidas (FAQ)</span>
-        </a>
-        <div class="cluster">
-        <!-- Botão Secreto do Admin (Só aparece para pedroeliasm08@gmail.com) -->
-        <button type="button" id="btn-admin-panel" class="btn btn--admin" hidden title="Painel de Suporte do Administrador">
-          <i class="ph-fill ph-shield-star"></i>
-          <span>Admin</span>
-          <span id="admin-badge-count" class="admin-count">0</span>
-        </button>
-
-        <button type="button" id="btn-export-pdf" class="btn btn--pdf" title="Gerar dossiê completo em PDF para a faculdade">
-          <i class="ph-bold ph-file-pdf"></i>
-          <span>Baixar Relatório PDF</span>
-        </button>
-
-        <button type="button" id="btn-open-feedback" class="btn btn--feedback" title="Relatar erro ou enviar sugestão">
-          <i class="ph-bold ph-bug"></i>
-          <span>Bugs / Dicas</span>
-        </button>
-
-        <button type="button" id="btn-open-quota" class="btn btn--ghost">
-          <i class="ph ph-sliders-horizontal"></i>
-          <span>Meta: <strong id="header-quota-val" class="mono-text">200h</strong></span>
-        </button>
-
-        <button type="button" id="btn-logout" class="btn btn--icon" title="Sair da conta" aria-label="Sair da conta">
-          <i class="ph ph-sign-out"></i>
-        </button>
-      </div>
-        <div class="cluster">
-        <button type="button" id="btn-export-pdf" class="btn btn--pdf" title="Gerar dossiê completo em PDF para a faculdade">
-          <i class="ph-bold ph-file-pdf"></i>
-          <span>Baixar Relatório PDF</span>
-        </button>
-
-        <button type="button" id="btn-open-feedback" class="btn btn--feedback" title="Relatar erro ou enviar sugestão">
-          <i class="ph-bold ph-bug"></i>
-          <span>Bugs / Dicas</span>
-        </button>
-
-        <button type="button" id="btn-open-quota" class="btn btn--ghost">
-          <i class="ph ph-sliders-horizontal"></i>
-          <span>Meta: <strong id="header-quota-val" class="mono-text">200h</strong></span>
-        </button>
-
-        <button type="button" id="btn-logout" class="btn btn--icon" title="Sair da conta" aria-label="Sair da conta">
-          <i class="ph ph-sign-out"></i>
-        </button>
-      </div>
         <div>
           <h2 id="user-course-title" class="topbar__title">Chronos Acadêmico</h2>
           <span id="user-display-email" class="topbar__subtitle">Carregando...</span>
         </div>
       </div>
 
+      <!-- NAVEGAÇÃO DE ABAS (PAINEL vs ABA EXCLUSIVA FAQ & BUGS/DICAS) -->
+      <nav class="tabs-nav" aria-label="Navegação principal">
+        <button type="button" class="tab-btn active" data-tab-btn="tab-painel">
+          <i class="ph-bold ph-chart-pie-slice"></i>
+          <span>Painel de Horas</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab-btn="tab-faq">
+          <i class="ph-bold ph-question"></i>
+          <span>FAQ & Bugs / Dicas</span>
+        </button>
+      </nav>
+
+      <!-- AÇÕES DO TOPO -->
       <div class="cluster">
+        <!-- Botão Admin: removido automaticamente do DOM se não for pedroeliasm08@gmail.com -->
+        <button type="button" id="btn-admin-panel" class="btn btn--admin" hidden title="Painel exclusivo do Administrador">
+          <i class="ph-fill ph-shield-star"></i>
+          <span>Admin</span>
+          <span id="admin-badge-count" class="admin-count">0</span>
+        </button>
+
         <button type="button" id="btn-export-pdf" class="btn btn--pdf" title="Gerar dossiê completo em PDF para a faculdade">
           <i class="ph-bold ph-file-pdf"></i>
           <span>Baixar Relatório PDF</span>
@@ -94,8 +63,10 @@
       </div>
     </header>
 
-    <!-- CONTEÚDO PRINCIPAL -->
-    <main class="main-grid center">
+    <!-- ====================================================================
+         ABA 1: PAINEL PRINCIPAL DE HORAS E CERTIFICADOS
+         ==================================================================== -->
+    <main id="tab-painel" class="main-grid center">
       
       <!-- COLUNA 1: GRÁFICO E STATUS DA COTA -->
       <section class="glass-card widget stack" aria-live="polite">
@@ -175,7 +146,7 @@
             <label for="cert-file" class="dropzone">
               <i class="ph-duotone ph-image dropzone__icon"></i>
               <span id="dropzone-text" class="dropzone__title">Toque para enviar a imagem do certificado</span>
-              <span class="dropzone__hint">Otimização automática para salvar direto na sua conta</span>
+              <span class="dropzone__hint">Dica: tire um print do certificado para ficar mais leve</span>
               <input type="file" id="cert-file" accept="image/*,.pdf" class="sr-only" required />
             </label>
           </div>
@@ -206,18 +177,155 @@
 
     </main>
 
-    <!-- RODAPÉ COM LINKS PARA OS TERMOS -->
-    <footer class="app-footer center cluster">
-        <footer class="app-footer center cluster">
-      <span class="text-dim">Certificados Skylab &copy; 2026</span>
-      <div class="cluster">
-        <a href="faq.html" class="footer-link">Dúvidas (FAQ)</a>
-        <span class="text-dim">•</span>
-        <a href="termo-uso.html" class="footer-link">Termos de Uso</a>
-        <span class="text-dim">•</span>
-        <a href="termo-privacidade.html" class="footer-link">Política de Privacidade</a>
+    <!-- ====================================================================
+         ABA 2: ABA EXCLUSIVA DE FAQ + RELATAR BUGS E DICAS
+         ==================================================================== -->
+    <section id="tab-faq" class="faq-tab-layout center" hidden>
+      
+      <!-- COLUNA ESQUERDA DA ABA FAQ: DÚVIDAS FREQUENTES -->
+      <div class="glass-card widget stack">
+        <div class="brand-pill" style="align-self: flex-start;">
+          <span class="status-dot"></span>
+          <i class="ph-fill ph-question"></i>
+          <span>CENTRAL DE DÚVIDAS (FAQ)</span>
+        </div>
+
+        <div>
+          <h3>Perguntas Frequentes</h3>
+          <p class="text-dim">Respostas rápidas sobre envio de fotos, limites e relatório da faculdade</p>
+        </div>
+
+        <!-- Banner de Dica do Print -->
+        <div class="faq-tip-banner">
+          <div class="faq-tip-banner__icon">
+            <i class="ph-fill ph-camera"></i>
+          </div>
+          <div>
+            <strong>Dica de Ouro: Tire um Print do Certificado!</strong>
+            <p>
+              Se o seu certificado estiver em um PDF pesado, abra o arquivo no celular ou no PC e <strong>tire um print (captura de tela)</strong>. O print fica super leve, salva instantaneamente e garante que a imagem do certificado saia estampada nas folhas finais do seu <strong>Relatório em PDF</strong>!
+            </p>
+          </div>
+        </div>
+
+        <!-- Acordeão de Dúvidas -->
+        <div class="faq-list stack">
+          <details class="faq-item" open>
+            <summary class="faq-item__summary">
+              <span>Qual é o tamanho de foto ou arquivo permitido?</span>
+              <i class="ph-bold ph-caret-down faq-item__icon"></i>
+            </summary>
+            <div class="faq-item__body">
+              <p>
+                Para <strong>imagens, fotos e prints (JPG, PNG, WebP)</strong>, o sistema comprime automaticamente fotos grandes (até 5 MB ou 10 MB) deixando-as leves sem perder a leitura. Para arquivos em <strong>PDF puro</strong>, o limite é de <strong>700 KB</strong> — por isso recomendamos tirar print do certificado e enviar como imagem!
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-item__summary">
+              <span>Se eu perder meu celular ou formatar o PC, perco meus certificados?</span>
+              <i class="ph-bold ph-caret-down faq-item__icon"></i>
+            </summary>
+            <div class="faq-item__body">
+              <p>
+                Não! Seus comprovantes ficam salvos na nuvem vinculados à sua <strong>Conta Google</strong>. Basta fazer login com o mesmo e-mail em qualquer aparelho para acessar ou baixar tudo novamente.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-item__summary">
+              <span>Como funciona o botão "Baixar Relatório PDF"?</span>
+              <i class="ph-bold ph-caret-down faq-item__icon"></i>
+            </summary>
+            <div class="faq-item__body">
+              <p>
+                Ele gera automaticamente um documento A4 com cabeçalho acadêmico, quadro de progresso da cota, tabela somada de todos os seus certificados e páginas de anexo com as fotos de cada comprovante prontas para entregar na secretaria.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-item__summary">
+              <span>Como altero a meta de horas exigida pelo meu curso?</span>
+              <i class="ph-bold ph-caret-down faq-item__icon"></i>
+            </summary>
+            <div class="faq-item__body">
+              <p>
+                Clique no botão <strong>Meta: 200h</strong> no topo da página, digite a carga horária complementar pedida pelo seu curso e clique em Salvar. O gráfico recalcula a porcentagem na mesma hora.
+              </p>
+            </div>
+          </details>
+        </div>
       </div>
-    </footer>
+
+      <!-- COLUNA DIREITA DA ABA FAQ: FORMULÁRIO DE BUGS E DICAS -->
+      <div class="glass-card widget stack" style="align-self: start;">
+        <div class="brand-pill" style="align-self: flex-start;">
+          <i class="ph-fill ph-bug"></i>
+          <span>SUPORTE & MELHORIAS</span>
+        </div>
+
+        <div>
+          <h3>Relatar Bug ou Enviar Dica</h3>
+          <p class="text-dim">
+            Encontrou algum erro ou tem uma sugestão para o sistema? Envie abaixo e responderemos direto no seu e-mail:
+          </p>
+        </div>
+
+        <form id="feedback-form" class="stack">
+          <div class="feedback-type-grid">
+            <label class="feedback-radio-card">
+              <input type="radio" name="feedback-type" value="dica" checked class="sr-only" />
+              <i class="ph-duotone ph-lightbulb"></i>
+              <span>Dica / Ideia</span>
+            </label>
+
+            <label class="feedback-radio-card">
+              <input type="radio" name="feedback-type" value="bug" class="sr-only" />
+              <i class="ph-duotone ph-bug"></i>
+              <span>Relatar Bug</span>
+            </label>
+          </div>
+
+          <div class="field">
+            <label for="feedback-area" class="field__label">Sobre qual parte do site?</label>
+            <select id="feedback-area" class="field__input">
+              <option value="Geral / Ideia Nova">Geral / Nova Funcionalidade</option>
+              <option value="Upload de Certificado">Envio de Foto / Certificado</option>
+              <option value="Gráfico e Soma de Horas">Gráfico e Soma de Horas</option>
+              <option value="Relatório PDF">Geração de Relatório PDF</option>
+              <option value="Login / Cadastro">Login / Cadastro</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="feedback-message" class="field__label">Sua Mensagem</label>
+            <textarea
+              id="feedback-message"
+              class="field__input field__textarea"
+              rows="4"
+              placeholder="Explique o bug que aconteceu ou conte sua ideia de melhoria..."
+              required
+              minlength="3"
+              maxlength="2000"
+            ></textarea>
+          </div>
+
+          <div id="feedback-status" class="feedback-toast" hidden></div>
+
+          <button type="submit" id="btn-submit-feedback" class="btn btn--primary" style="width: 100%;">
+            <i class="ph-bold ph-paper-plane-tilt"></i>
+            <span id="btn-feedback-text">Enviar Relato</span>
+          </button>
+        </form>
+      </div>
+
+    </section>
+
+    <!-- RODAPÉ -->
+    <footer class="app-footer center cluster">
       <span class="text-dim">Certificados Skylab &copy; 2026</span>
       <div class="cluster">
         <a href="termo-uso.html" class="footer-link">Termos de Uso</a>
@@ -282,7 +390,6 @@
         </p>
       </div>
 
-      <!-- Cards que puxam para os 2 arquivos HTML -->
       <div class="legal-links-grid">
         <a href="termo-uso.html" class="legal-doc-card">
           <div class="legal-doc-card__icon">
@@ -307,7 +414,6 @@
         </a>
       </div>
 
-      <!-- Resumo rápido rolável dentro da própria box -->
       <div class="legal-summary-box">
         <p><strong>Resumo de Privacidade & Uso:</strong> Solicitamos informações pessoais apenas quando necessário para fornecer o serviço, com o seu conhecimento e consentimento. Seus certificados são armazenados de forma protegida na sua conta e não compartilhamos dados de identificação pessoal com terceiros, exceto quando exigido por lei.</p>
       </div>
@@ -323,73 +429,8 @@
       </button>
     </div>
   </dialog>
-<!-- MODAL PARA RELATAR BUGS OU ENVIAR DICAS -->
-  <dialog id="feedback-modal" class="modal glass-card">
-    <form id="feedback-form" class="stack">
-      <div class="panel-header cluster">
-        <div class="cluster">
-          <i class="ph-duotone ph-chat-teardrop-text text-cyan" style="font-size: 22px;"></i>
-          <h3>Relatar Bug ou Enviar Dica</h3>
-        </div>
-        <button type="button" id="btn-close-feedback" class="btn btn--icon" aria-label="Fechar">
-          <i class="ph ph-x"></i>
-        </button>
-      </div>
 
-      <p class="text-dim">
-        Encontrou algum erro ou teve uma ideia para melhorar o Chronos? Mande abaixo:
-      </p>
-
-      <!-- Seletor de Tipo (Bug vs Dica) -->
-      <div class="feedback-type-grid">
-        <label class="feedback-radio-card">
-          <input type="radio" name="feedback-type" value="dica" checked class="sr-only" />
-          <i class="ph-duotone ph-lightbulb"></i>
-          <span>Dica / Ideia</span>
-        </label>
-
-        <label class="feedback-radio-card">
-          <input type="radio" name="feedback-type" value="bug" class="sr-only" />
-          <i class="ph-duotone ph-bug"></i>
-          <span>Relatar Bug</span>
-        </label>
-      </div>
-
-      <div class="field">
-        <label for="feedback-area" class="field__label">Onde isso acontece / Sobre o que é?</label>
-        <select id="feedback-area" class="field__input">
-          <option value="Geral / Ideia Nova">Geral / Nova Funcionalidade</option>
-          <option value="Upload de Certificado">Envio de Foto / Certificado</option>
-          <option value="Gráfico e Soma de Horas">Gráfico e Soma de Horas</option>
-          <option value="Relatório PDF">Geração de Relatório PDF</option>
-          <option value="Login / Cadastro">Login / Cadastro</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="feedback-message" class="field__label">Mensagem</label>
-        <textarea
-          id="feedback-message"
-          class="field__input field__textarea"
-          rows="4"
-          placeholder="Descreva sua sugestão ou explique o erro que aconteceu..."
-          required
-          minlength="3"
-          maxlength="2000"
-        ></textarea>
-      </div>
-
-      <div id="feedback-status" class="feedback-toast" hidden></div>
-
-      <div class="cluster modal-actions">
-        <button type="submit" id="btn-submit-feedback" class="btn btn--primary" style="width: 100%;">
-          <i class="ph-bold ph-paper-plane-tilt"></i>
-          <span id="btn-feedback-text">Enviar Mensagem</span>
-        </button>
-      </div>
-    </form>
-  </dialog>
-  <!-- MODAL EXCLUSIVO DO ADMINISTRADOR (RESPONDER BUGS E DICAS POR E-MAIL) -->
+  <!-- MODAL EXCLUSIVO DO ADMINISTRADOR (SÓ EXISTE PARA pedroeliasm08@gmail.com) -->
   <dialog id="admin-modal" class="modal modal--large glass-card">
     <div class="stack">
       <div class="panel-header cluster">
@@ -405,11 +446,10 @@
         </button>
       </div>
 
-      <div id="admin-feedback-list" class="admin-ticket-list stack">
-        <!-- Relatos carregados via JavaScript -->
-      </div>
+      <div id="admin-feedback-list" class="admin-ticket-list stack"></div>
     </div>
   </dialog>
+
   <script type="module" src="app.js"></script>
 </body>
 </html>
