@@ -20,6 +20,57 @@
         <div class="brand-icon">
           <i class="ph-fill ph-student"></i>
         </div>
+        <a href="faq.html" class="btn btn--ghost" title="Dúvidas Frequentes">
+          <i class="ph-bold ph-question"></i>
+          <span>Dúvidas (FAQ)</span>
+        </a>
+        <div class="cluster">
+        <!-- Botão Secreto do Admin (Só aparece para pedroeliasm08@gmail.com) -->
+        <button type="button" id="btn-admin-panel" class="btn btn--admin" hidden title="Painel de Suporte do Administrador">
+          <i class="ph-fill ph-shield-star"></i>
+          <span>Admin</span>
+          <span id="admin-badge-count" class="admin-count">0</span>
+        </button>
+
+        <button type="button" id="btn-export-pdf" class="btn btn--pdf" title="Gerar dossiê completo em PDF para a faculdade">
+          <i class="ph-bold ph-file-pdf"></i>
+          <span>Baixar Relatório PDF</span>
+        </button>
+
+        <button type="button" id="btn-open-feedback" class="btn btn--feedback" title="Relatar erro ou enviar sugestão">
+          <i class="ph-bold ph-bug"></i>
+          <span>Bugs / Dicas</span>
+        </button>
+
+        <button type="button" id="btn-open-quota" class="btn btn--ghost">
+          <i class="ph ph-sliders-horizontal"></i>
+          <span>Meta: <strong id="header-quota-val" class="mono-text">200h</strong></span>
+        </button>
+
+        <button type="button" id="btn-logout" class="btn btn--icon" title="Sair da conta" aria-label="Sair da conta">
+          <i class="ph ph-sign-out"></i>
+        </button>
+      </div>
+        <div class="cluster">
+        <button type="button" id="btn-export-pdf" class="btn btn--pdf" title="Gerar dossiê completo em PDF para a faculdade">
+          <i class="ph-bold ph-file-pdf"></i>
+          <span>Baixar Relatório PDF</span>
+        </button>
+
+        <button type="button" id="btn-open-feedback" class="btn btn--feedback" title="Relatar erro ou enviar sugestão">
+          <i class="ph-bold ph-bug"></i>
+          <span>Bugs / Dicas</span>
+        </button>
+
+        <button type="button" id="btn-open-quota" class="btn btn--ghost">
+          <i class="ph ph-sliders-horizontal"></i>
+          <span>Meta: <strong id="header-quota-val" class="mono-text">200h</strong></span>
+        </button>
+
+        <button type="button" id="btn-logout" class="btn btn--icon" title="Sair da conta" aria-label="Sair da conta">
+          <i class="ph ph-sign-out"></i>
+        </button>
+      </div>
         <div>
           <h2 id="user-course-title" class="topbar__title">Chronos Acadêmico</h2>
           <span id="user-display-email" class="topbar__subtitle">Carregando...</span>
@@ -157,6 +208,16 @@
 
     <!-- RODAPÉ COM LINKS PARA OS TERMOS -->
     <footer class="app-footer center cluster">
+        <footer class="app-footer center cluster">
+      <span class="text-dim">Certificados Skylab &copy; 2026</span>
+      <div class="cluster">
+        <a href="faq.html" class="footer-link">Dúvidas (FAQ)</a>
+        <span class="text-dim">•</span>
+        <a href="termo-uso.html" class="footer-link">Termos de Uso</a>
+        <span class="text-dim">•</span>
+        <a href="termo-privacidade.html" class="footer-link">Política de Privacidade</a>
+      </div>
+    </footer>
       <span class="text-dim">Certificados Skylab &copy; 2026</span>
       <div class="cluster">
         <a href="termo-uso.html" class="footer-link">Termos de Uso</a>
@@ -262,7 +323,93 @@
       </button>
     </div>
   </dialog>
+<!-- MODAL PARA RELATAR BUGS OU ENVIAR DICAS -->
+  <dialog id="feedback-modal" class="modal glass-card">
+    <form id="feedback-form" class="stack">
+      <div class="panel-header cluster">
+        <div class="cluster">
+          <i class="ph-duotone ph-chat-teardrop-text text-cyan" style="font-size: 22px;"></i>
+          <h3>Relatar Bug ou Enviar Dica</h3>
+        </div>
+        <button type="button" id="btn-close-feedback" class="btn btn--icon" aria-label="Fechar">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
 
+      <p class="text-dim">
+        Encontrou algum erro ou teve uma ideia para melhorar o Chronos? Mande abaixo:
+      </p>
+
+      <!-- Seletor de Tipo (Bug vs Dica) -->
+      <div class="feedback-type-grid">
+        <label class="feedback-radio-card">
+          <input type="radio" name="feedback-type" value="dica" checked class="sr-only" />
+          <i class="ph-duotone ph-lightbulb"></i>
+          <span>Dica / Ideia</span>
+        </label>
+
+        <label class="feedback-radio-card">
+          <input type="radio" name="feedback-type" value="bug" class="sr-only" />
+          <i class="ph-duotone ph-bug"></i>
+          <span>Relatar Bug</span>
+        </label>
+      </div>
+
+      <div class="field">
+        <label for="feedback-area" class="field__label">Onde isso acontece / Sobre o que é?</label>
+        <select id="feedback-area" class="field__input">
+          <option value="Geral / Ideia Nova">Geral / Nova Funcionalidade</option>
+          <option value="Upload de Certificado">Envio de Foto / Certificado</option>
+          <option value="Gráfico e Soma de Horas">Gráfico e Soma de Horas</option>
+          <option value="Relatório PDF">Geração de Relatório PDF</option>
+          <option value="Login / Cadastro">Login / Cadastro</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="feedback-message" class="field__label">Mensagem</label>
+        <textarea
+          id="feedback-message"
+          class="field__input field__textarea"
+          rows="4"
+          placeholder="Descreva sua sugestão ou explique o erro que aconteceu..."
+          required
+          minlength="3"
+          maxlength="2000"
+        ></textarea>
+      </div>
+
+      <div id="feedback-status" class="feedback-toast" hidden></div>
+
+      <div class="cluster modal-actions">
+        <button type="submit" id="btn-submit-feedback" class="btn btn--primary" style="width: 100%;">
+          <i class="ph-bold ph-paper-plane-tilt"></i>
+          <span id="btn-feedback-text">Enviar Mensagem</span>
+        </button>
+      </div>
+    </form>
+  </dialog>
+  <!-- MODAL EXCLUSIVO DO ADMINISTRADOR (RESPONDER BUGS E DICAS POR E-MAIL) -->
+  <dialog id="admin-modal" class="modal modal--large glass-card">
+    <div class="stack">
+      <div class="panel-header cluster">
+        <div class="cluster">
+          <i class="ph-fill ph-shield-star text-cyan" style="font-size: 24px;"></i>
+          <div>
+            <h3>Central de Relatos & Suporte (Admin)</h3>
+            <p class="text-dim">Responda diretamente para o e-mail do estudante</p>
+          </div>
+        </div>
+        <button type="button" id="btn-close-admin" class="btn btn--icon" aria-label="Fechar">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+
+      <div id="admin-feedback-list" class="admin-ticket-list stack">
+        <!-- Relatos carregados via JavaScript -->
+      </div>
+    </div>
+  </dialog>
   <script type="module" src="app.js"></script>
 </body>
 </html>

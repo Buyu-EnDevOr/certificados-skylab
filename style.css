@@ -600,3 +600,256 @@
     }
   }
 }
+@layer components {
+  .btn.btn--feedback {
+    background: rgba(251, 191, 36, 0.12);
+    border-color: rgba(251, 191, 36, 0.35);
+    color: var(--color-amber-400);
+
+    &:hover {
+      background: rgba(251, 191, 36, 0.22);
+      box-shadow: 0 6px 20px rgba(251, 191, 36, 0.18);
+    }
+  }
+
+  .feedback-type-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+  }
+
+  .feedback-radio-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background: rgba(6, 9, 19, 0.65);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all var(--duration-base) var(--ease-out);
+
+    & i {
+      font-size: 20px;
+    }
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
+    }
+
+    &:has(input[value="dica"]:checked) {
+      background: rgba(6, 182, 212, 0.14);
+      border-color: var(--color-cyan-500);
+      color: var(--color-cyan-500);
+      box-shadow: 0 0 16px rgba(6, 182, 212, 0.15);
+    }
+
+    &:has(input[value="bug"]:checked) {
+      background: rgba(244, 63, 94, 0.14);
+      border-color: #f43f5e;
+      color: #fda4af;
+      box-shadow: 0 0 16px rgba(244, 63, 94, 0.15);
+    }
+  }
+
+  .field__textarea {
+    resize: vertical;
+    min-height: 96px;
+    line-height: 1.5;
+  }
+
+  .feedback-toast {
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: rgba(52, 211, 153, 0.15);
+    border: 1px solid rgba(52, 211, 153, 0.4);
+    color: var(--color-emerald-400);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+  }
+}
+@layer components {
+  .btn.btn--admin {
+    background: rgba(139, 92, 246, 0.16);
+    border-color: rgba(139, 92, 246, 0.45);
+    color: #c4b5fd;
+
+    &:hover {
+      background: rgba(139, 92, 246, 0.28);
+      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.25);
+    }
+  }
+
+  .admin-count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding-inline: 6px;
+    border-radius: 999px;
+    background: var(--color-cyan-500);
+    color: #060913;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .admin-ticket-list {
+    max-height: 72dvh;
+    overflow-y: auto;
+    padding-right: var(--space-1);
+  }
+
+  .admin-ticket {
+    background: rgba(6, 9, 19, 0.7);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+
+    &.admin-ticket--replied {
+      border-color: rgba(52, 211, 153, 0.3);
+    }
+
+    & .admin-ticket__header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    & .admin-ticket__msg {
+      background: rgba(255, 255, 255, 0.03);
+      border-left: 3px solid var(--color-cyan-500);
+      padding: var(--space-3);
+      border-radius: 0 8px 8px 0;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    & .admin-reply-area {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      padding-top: var(--space-2);
+      border-top: 1px solid var(--border-subtle);
+    }
+  }
+
+  .badge--bug {
+    background: rgba(244, 63, 94, 0.16);
+    color: #fda4af;
+    border-color: rgba(244, 63, 94, 0.35);
+  }
+}
+@layer components {
+  /* Banner de Dica de Ouro (Print do Certificado) */
+  .faq-tip-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.14), rgba(139, 92, 246, 0.14));
+    border: 1px solid var(--border-highlight);
+    border-radius: var(--radius-md);
+
+    & .faq-tip-banner__icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: rgba(6, 182, 212, 0.2);
+      color: var(--color-cyan-500);
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    & strong {
+      display: block;
+      font-size: 15px;
+      color: var(--color-cyan-500);
+      margin-bottom: 4px;
+    }
+
+    & p {
+      font-size: 13px;
+      color: var(--text-primary);
+      line-height: 1.55;
+    }
+  }
+
+  /* Acordeão de Perguntas Frequentes */
+  .faq-item {
+    background: rgba(6, 9, 19, 0.65);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: border-color var(--duration-base) var(--ease-out);
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
+    &[open] {
+      border-color: var(--border-highlight);
+      background: rgba(15, 23, 42, 0.85);
+
+      & .faq-item__icon {
+        transform: rotate(180deg);
+        color: var(--color-cyan-500);
+      }
+    }
+
+    & .faq-item__summary {
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-4) var(--space-5);
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      user-select: none;
+
+      &::-webkit-details-marker {
+        display: none;
+      }
+    }
+
+    & .faq-item__icon {
+      font-size: 18px;
+      color: var(--text-dim);
+      transition: transform var(--duration-base) var(--ease-spring), color var(--duration-fast);
+      flex-shrink: 0;
+    }
+
+    & .faq-item__body {
+      padding: 0 var(--space-5) var(--space-4);
+      color: #cbd5e1;
+      font-size: 14px;
+      line-height: 1.65;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: var(--space-3);
+
+      & code {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: var(--color-cyan-500);
+      }
+    }
+  }
+}
