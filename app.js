@@ -1,15 +1,15 @@
 /**
  * ============================================================================
- * 1. CONFIGURAÇÃO DO FIREBASE (COLE SUAS CHAVES AQUI)
+ * 1. CONFIGURAÇÃO DO FIREBASE (PROJETO: certificados-8a23e)
  * ============================================================================
  */
 const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyDJqhH859FJcI7qS5JEP2l9lcFAXtspzIk",
+  authDomain: "certificados-8a23e.firebaseapp.com",
+  projectId: "certificados-8a23e",
+  storageBucket: "certificados-8a23e.firebasestorage.app",
+  messagingSenderId: "384791889838",
+  appId: "1:384791889838:web:c37d9984f88789a94b6a3f"
 };
 
 const isFirebaseReady = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
@@ -249,7 +249,6 @@ async function generateCompletePdfReport(profile, certificates) {
   doc.text("1. Quadro Detalhado de Atividades e Certificados", 14, y);
   y += 6;
 
-  // Cabeçalho da Tabela
   doc.setFillColor(30, 41, 59);
   doc.rect(14, y, 182, 8, "F");
   doc.setTextColor(255, 255, 255);
@@ -261,7 +260,6 @@ async function generateCompletePdfReport(profile, certificates) {
   doc.text("HORAS", 182, y + 5.5);
   y += 8;
 
-  // Linhas da Tabela
   doc.setFont("helvetica", "normal");
   certificates.forEach((cert, index) => {
     if (y > 265) {
@@ -291,7 +289,6 @@ async function generateCompletePdfReport(profile, certificates) {
     y += 8;
   });
 
-  // Linha de Totalização
   doc.setFillColor(226, 232, 240);
   doc.rect(14, y, 182, 9, "F");
   doc.setFont("helvetica", "bold");
@@ -306,7 +303,6 @@ async function generateCompletePdfReport(profile, certificates) {
 
     doc.addPage();
 
-    // Topo da Página do Anexo
     doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 210, 26, "F");
 
@@ -325,7 +321,6 @@ async function generateCompletePdfReport(profile, certificates) {
     doc.setTextColor(71, 85, 105);
     doc.text(`Categoria: ${cert.category}   |   Carga Horária Validada: +${cert.hours} horas`, 14, 35);
 
-    // Calcula proporção da imagem para caber perfeitamente na folha A4
     try {
       const dims = await getImageDimensions(cert.fileData);
       const maxW = 182;
@@ -380,49 +375,36 @@ async function initFirebaseModules() {
 }
 
 async function authenticateWithGoogle(registrationMeta = null) {
-  if (isFirebaseReady) {
-    const { GoogleAuthProvider, signInWithPopup } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
-    const { doc, getDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-    const { fbAuth, fbDb } = await initFirebaseModules();
+  const { GoogleAuthProvider, signInWithPopup } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+  const { doc, getDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+  const { fbAuth, fbDb } = await initFirebaseModules();
 
-    const result = await signInWithPopup(fbAuth, new GoogleAuthProvider());
-    const user = result.user;
-    const userRef = doc(fbDb, "users", user.uid);
-    const snap = await getDoc(userRef);
+  const result = await signInWithPopup(fbAuth, new GoogleAuthProvider());
+  const user = result.user;
+  const userRef = doc(fbDb, "users", user.uid);
+  const snap = await getDoc(userRef);
 
-    let profile = {
-      uid: user.uid,
-      name: user.displayName || "Estudante",
-      email: user.email,
-      course: registrationMeta?.course || "Graduação",
-      quota: Number(registrationMeta?.quota || 200),
-      updatedAt: Date.now()
-    };
+  let profile = {
+    uid: user.uid,
+    name: user.displayName || "Estudante",
+    email: user.email,
+    course: registrationMeta?.course || "Graduação",
+    quota: Number(registrationMeta?.quota || 200),
+    updatedAt: Date.now()
+  };
 
-    if (snap.exists() && !registrationMeta) {
-      profile = { ...profile, ...snap.data() };
-    } else {
-      await setDoc(userRef, {
-        course: profile.course,
-        quota: profile.quota,
-        updatedAt: Date.now()
-      }, { merge: true });
-    }
-
-    localStorage.setItem("chronos_user", JSON.stringify(profile));
-    window.location.href = "index.html";
+  if (snap.exists() && !registrationMeta) {
+    profile = { ...profile, ...snap.data() };
   } else {
-    const savedProfile = JSON.parse(localStorage.getItem("chronos_user") || "null");
-    const profile = {
-      uid: "local-student-ufsj",
-      name: "Estudante Universitário",
-      email: "estudante@ufsj.edu.br",
-      course: registrationMeta?.course || savedProfile?.course || "Administração - UFSJ",
-      quota: Number(registrationMeta?.quota || savedProfile?.quota || 200)
-    };
-    localStorage.setItem("chronos_user", JSON.stringify(profile));
-    window.location.href = "index.html";
+    await setDoc(userRef, {
+      course: profile.course,
+      quota: profile.quota,
+      updatedAt: Date.now()
+    }, { merge: true });
   }
+
+  localStorage.setItem("chronos_user", JSON.stringify(profile));
+  window.location.href = "index.html";
 }
 
 /**
@@ -431,13 +413,6 @@ async function authenticateWithGoogle(registrationMeta = null) {
  * ============================================================================
  */
 const currentPage = document.body.dataset.page;
-const envStatusEl = document.getElementById("env-status");
-
-if (envStatusEl) {
-  envStatusEl.textContent = isFirebaseReady
-    ? "Nuvem Firestore Ativa"
-    : "Modo de Teste Local Ativo (adicione seu firebaseConfig no app.js)";
-}
 
 if (currentPage === "login") {
   const btnLogin = document.getElementById("btn-google-login");
@@ -522,35 +497,33 @@ async function initDashboard() {
   let certificates = await getLocalCerts(profile.uid);
   let searchQuery = "";
 
-  if (isFirebaseReady) {
-    try {
-      const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-      const { fbDb } = await initFirebaseModules();
-      const snap = await getDocs(collection(fbDb, "users", profile.uid, "certificates"));
-      const localIds = new Set(certificates.map((c) => c.id));
+  try {
+    const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const { fbDb } = await initFirebaseModules();
+    const snap = await getDocs(collection(fbDb, "users", profile.uid, "certificates"));
+    const localIds = new Set(certificates.map((c) => c.id));
 
-      for (const docSnap of snap.docs) {
-        if (!localIds.has(docSnap.id)) {
-          const data = docSnap.data();
-          const decrypted = await decryptMeta(profile.uid, data.cipherMeta, data.iv);
-          const syncedCert = {
-            id: docSnap.id,
-            userId: profile.uid,
-            name: decrypted.name,
-            fileName: decrypted.fileName,
-            category: data.category,
-            hours: data.hours,
-            fileData: data.fileData,
-            createdAt: data.createdAt
-          };
-          await saveLocalCert(syncedCert);
-          certificates.push(syncedCert);
-        }
+    for (const docSnap of snap.docs) {
+      if (!localIds.has(docSnap.id)) {
+        const data = docSnap.data();
+        const decrypted = await decryptMeta(profile.uid, data.cipherMeta, data.iv);
+        const syncedCert = {
+          id: docSnap.id,
+          userId: profile.uid,
+          name: decrypted.name,
+          fileName: decrypted.fileName,
+          category: data.category,
+          hours: data.hours,
+          fileData: data.fileData,
+          createdAt: data.createdAt
+        };
+        await saveLocalCert(syncedCert);
+        certificates.push(syncedCert);
       }
-      certificates.sort((a, b) => b.createdAt - a.createdAt);
-    } catch (e) {
-      console.warn("Usando cache local:", e);
     }
+    certificates.sort((a, b) => b.createdAt - a.createdAt);
+  } catch (e) {
+    console.warn("Usando cache local:", e);
   }
 
   function renderUI() {
@@ -633,7 +606,6 @@ async function initDashboard() {
 
   renderUI();
 
-  // Botão de Exportar Relatório Completo em PDF
   btnExportPdf.addEventListener("click", async () => {
     const span = btnExportPdf.querySelector("span");
     const originalText = span.textContent;
@@ -683,23 +655,21 @@ async function initDashboard() {
       certificates = [newCert, ...certificates];
       renderUI();
 
-      if (isFirebaseReady) {
-        const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-        const { fbDb } = await initFirebaseModules();
-        const encrypted = await encryptMeta(profile.uid, {
-          name: newCert.name,
-          fileName: newCert.fileName
-        });
+      const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      const { fbDb } = await initFirebaseModules();
+      const encrypted = await encryptMeta(profile.uid, {
+        name: newCert.name,
+        fileName: newCert.fileName
+      });
 
-        await setDoc(doc(fbDb, "users", profile.uid, "certificates", newCert.id), {
-          cipherMeta: encrypted.cipherMeta,
-          iv: encrypted.iv,
-          fileData: newCert.fileData,
-          hours: newCert.hours,
-          category: newCert.category,
-          createdAt: newCert.createdAt
-        });
-      }
+      await setDoc(doc(fbDb, "users", profile.uid, "certificates", newCert.id), {
+        cipherMeta: encrypted.cipherMeta,
+        iv: encrypted.iv,
+        fileData: newCert.fileData,
+        hours: newCert.hours,
+        category: newCert.category,
+        createdAt: newCert.createdAt
+      });
 
       certForm.reset();
       dropzoneText.textContent = "Toque para enviar a imagem do certificado";
@@ -740,14 +710,12 @@ async function initDashboard() {
       certificates = certificates.filter((c) => c.id !== id);
       renderUI();
 
-      if (isFirebaseReady) {
-        try {
-          const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-          const { fbDb } = await initFirebaseModules();
-          await deleteDoc(doc(fbDb, "users", profile.uid, "certificates", id));
-        } catch (err) {
-          console.warn("Erro ao excluir do Firestore:", err);
-        }
+      try {
+        const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        const { fbDb } = await initFirebaseModules();
+        await deleteDoc(doc(fbDb, "users", profile.uid, "certificates", id));
+      } catch (err) {
+        console.warn("Erro ao excluir do Firestore:", err);
       }
     }
   });
@@ -768,18 +736,16 @@ async function initDashboard() {
     localStorage.setItem("chronos_user", JSON.stringify(profile));
     renderUI();
 
-    if (isFirebaseReady) {
-      try {
-        const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-        const { fbDb } = await initFirebaseModules();
-        await setDoc(doc(fbDb, "users", profile.uid), {
-          course: profile.course,
-          quota: profile.quota,
-          updatedAt: Date.now()
-        }, { merge: true });
-      } catch (err) {
-        console.warn("Erro ao atualizar cota:", err);
-      }
+    try {
+      const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      const { fbDb } = await initFirebaseModules();
+      await setDoc(doc(fbDb, "users", profile.uid), {
+        course: profile.course,
+        quota: profile.quota,
+        updatedAt: Date.now()
+      }, { merge: true });
+    } catch (err) {
+      console.warn("Erro ao atualizar cota:", err);
     }
   });
 
