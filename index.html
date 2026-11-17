@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chronos | Repositório de Horas Complementares</title>
+  
+  <!-- Fontes: Inter (UI) + JetBrains Mono (Dados/Métricas) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- TELA DE LOGIN -->
+  <section id="auth-view" class="auth-layout centered">
+    <div class="glass-card auth-card stack">
+      <div class="brand-pill">
+        <span class="status-dot"></span>
+        <i class="ph-fill ph-graduation-cap"></i>
+        <span>CHRONOS ACADÊMICO</span>
+      </div>
+
+      <h1 class="balance">Suas horas complementares sob controle total.</h1>
+      <p class="pretty">
+        Salve seus certificados na nuvem, visualize quanto falta para bater a cota da faculdade em tempo real e baixe seus comprovantes quando precisar.
+      </p>
+
+      <button type="button" id="btn-google-login" class="btn btn--google">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="Logo Google" />
+        <span>Entrar com Conta Google</span>
+      </button>
+
+      <p id="env-status" class="mono-tag">
+        Modo Local IndexedDB ativo (adicione seu firebaseConfig no app.js para nuvem)
+      </p>
+    </div>
+  </section>
+
+  <!-- APLICAÇÃO PRINCIPAL -->
+  <div id="app-view" class="app-layout" hidden>
+    <!-- HEADER -->
+    <header class="topbar glass-card">
+      <div class="cluster">
+        <div class="brand-icon">
+          <i class="ph-fill ph-student"></i>
+        </div>
+        <div>
+          <h2 class="topbar__title">Chronos</h2>
+          <span id="user-display-email" class="topbar__subtitle">estudante@universidade.edu.br</span>
+        </div>
+      </div>
+
+      <div class="cluster">
+        <button type="button" id="btn-open-quota" class="btn btn--ghost" aria-label="Alterar cota da faculdade">
+          <i class="ph ph-sliders-horizontal"></i>
+          <span>Meta: <strong id="header-quota-val" class="mono-text">200h</strong></span>
+        </button>
+        <button type="button" id="btn-logout" class="btn btn--icon" aria-label="Sair da conta" title="Sair">
+          <i class="ph ph-sign-out"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- DASHBOARD -->
+    <main class="main-grid center">
+      
+      <!-- COLUNA 1: GRÁFICO E STATUS DA COTA -->
+      <section class="glass-card widget metrics-panel stack" aria-live="polite">
+        <div class="panel-header cluster">
+          <div>
+            <h3>Progresso da Cota</h3>
+            <p class="text-dim">Cálculo automático de integralização</p>
+          </div>
+          <span id="status-badge" class="badge">Em andamento</span>
+        </div>
+
+        <!-- Gráfico SVG Circular -->
+        <div class="chart-box centered">
+          <svg class="ring-svg" width="220" height="220" viewBox="0 0 220 220">
+            <defs>
+              <linearGradient id="cyberGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#06b6d4" />
+                <stop offset="100%" stop-color="#8b5cf6" />
+              </linearGradient>
+            </defs>
+            <circle class="ring-bg" cx="110" cy="110" r="92" />
+            <circle id="ring-progress" class="ring-meter" cx="110" cy="110" r="92" />
+          </svg>
+          <div class="chart-readout stack centered">
+            <strong id="chart-percent" class="readout-percent">0%</strong>
+            <span class="readout-label">Concluído</span>
+          </div>
+        </div>
+
+        <!-- Métricas Numéricas -->
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-item__label">Computadas</span>
+            <strong id="stat-done" class="stat-item__val text-cyan">0h</strong>
+          </div>
+          <div class="stat-item">
+            <span class="stat-item__label">Faltam</span>
+            <strong id="stat-left" class="stat-item__val text-amber">200h</strong>
+          </div>
+          <div class="stat-item">
+            <span class="stat-item__label">Exigido</span>
+            <strong id="stat-total" class="stat-item__val">200h</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- COLUNA 2: UPLOAD DE CERTIFICADO -->
+      <section class="glass-card widget upload-panel stack">
+        <div class="panel-header">
+          <h3>Adicionar Certificado</h3>
+          <p class="text-dim">Envie o PDF ou imagem para contabilizar horas</p>
+        </div>
+
+        <form id="cert-form" class="form-stack stack">
+          <div class="field">
+            <label for="cert-name" class="field__label">Nome do Curso ou Evento</label>
+            <input type="text" id="cert-name" class="field__input" placeholder="Ex: Semana da Administração, Curso Python..." required />
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="cert-category" class="field__label">Categoria</label>
+              <select id="cert-category" class="field__input">
+                <option value="Ensino">Ensino / Curso</option>
+                <option value="Extensão">Extensão / Evento</option>
+                <option value="Pesquisa">Pesquisa / Iniciação</option>
+                <option value="Estágio/Monitoria">Monitoria / Estágio</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="cert-hours" class="field__label">Horas Validadas</label>
+              <input type="number" id="cert-hours" class="field__input mono-text" min="1" max="1000" placeholder="Ex: 15" required />
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="field__label">Arquivo do Comprovante (PDF, PNG, JPG)</span>
+            <label for="cert-file" class="dropzone">
+              <i class="ph-duotone ph-cloud-arrow-up dropzone__icon"></i>
+              <span id="dropzone-text" class="dropzone__title">Toque para anexar ou arraste o certificado</span>
+              <span class="dropzone__hint">Armazenado com segurança para download futuro</span>
+              <input type="file" id="cert-file" accept=".pdf,image/*" class="sr-only" required />
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn--primary">
+            <i class="ph-bold ph-plus-circle"></i>
+            <span>Computar Horas & Guardar Arquivo</span>
+          </button>
+        </form>
+      </section>
+
+      <!-- LINHA INFERIOR: COFRE / REPOSITÓRIO DE CERTIFICADOS -->
+      <section class="glass-card widget vault-panel stack">
+        <div class="vault-header cluster">
+          <div>
+            <h3>Cofre de Certificados</h3>
+            <p class="text-dim">Baixe seus comprovantes a qualquer momento</p>
+          </div>
+
+          <div class="search-field">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="search" id="search-input" placeholder="Filtrar certificados..." aria-label="Filtrar certificados" />
+          </div>
+        </div>
+
+        <div id="vault-grid" class="vault-grid" role="list">
+          <!-- Cards injetados pelo JavaScript -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL NATIVO PARA DEFINIR COTA DA FACULDADE -->
+  <dialog id="quota-modal" class="modal glass-card">
+    <form id="quota-form" method="dialog" class="stack">
+      <div class="panel-header cluster">
+        <h3>Cota da Faculdade</h3>
+        <button type="button" id="btn-close-modal" class="btn btn--icon" aria-label="Fechar janela">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+      <p class="text-dim">Informe o total de horas complementares exigido pelo projeto pedagógico do seu curso:</p>
+      <div class="field">
+        <label for="input-quota" class="field__label">Total de Horas Exigidas</label>
+        <input type="number" id="input-quota" class="field__input mono-text" min="10" max="3000" required />
+      </div>
+      <div class="cluster modal-actions">
+        <button type="submit" class="btn btn--primary">Atualizar Meta</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
