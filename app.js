@@ -16,16 +16,67 @@ const isFirebaseReady = Boolean(firebaseConfig.apiKey && firebaseConfig.projectI
 
 /**
  * ============================================================================
- * 2. CRIPTOGRAFIA CLIENT-SIDE (WEB CRYPTO API AES-GCM 256 + SHA-256)
+ * 2. COMPRESSOR AUTOMÁTICO DE IMAGEM (SALVA DIRETO NO FIRESTORE SEM STORAGE)
  * ============================================================================
- * Garante que mesmo no banco de dados os dados sensíveis fiquem criptografados
- * com uma chave derivada exclusivamente do UID do usuário.
+ */
+async function compressFileToDataUrl(file) {
+  if (file.type === "application/pdf") {
+    if (file.size > 700 * 1024) {
+      throw new Error("Para PDFs acima de 700KB, envie um print ou foto do certificado para compressão automática.");
+    }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const MAX_WIDTH = 1400;
+      const MAX_HEIGHT = 1400;
+      let { width, height } = img;
+
+      if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+        const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.78);
+      resolve(compressedDataUrl);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Não foi possível processar esta imagem."));
+    };
+
+    img.src = objectUrl;
+  });
+}
+
+/**
+ * ============================================================================
+ * 3. CRIPTOGRAFIA CLIENT-SIDE (AES-GCM 256)
+ * ============================================================================
  */
 async function deriveUserKey(uid) {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
-    enc.encode(uid + "_CHRONOS_OBSIDIAN_SALT_2026"),
+    enc.encode(uid + "_CHRONOS_KEY_2026"),
     { name: "PBKDF2" },
     false,
     ["deriveKey"]
@@ -34,7 +85,7 @@ async function deriveUserKey(uid) {
   return crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt: enc.encode("chronos-academic-vault"),
+      salt: enc.encode("chronos-academic-salt"),
       iterations: 100000,
       hash: "SHA-256"
     },
@@ -45,44 +96,36 @@ async function deriveUserKey(uid) {
   );
 }
 
-async function encryptPayload(uid, plainObj) {
+async function encryptMeta(uid, plainObj) {
   const key = await deriveUserKey(uid);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encoded = new TextEncoder().encode(JSON.stringify(plainObj));
   const cipherBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
 
   return {
-    cipherText: btoa(String.fromCharCode(...new Uint8Array(cipherBuffer))),
+    cipherMeta: btoa(String.fromCharCode(...new Uint8Array(cipherBuffer))),
     iv: btoa(String.fromCharCode(...iv))
   };
 }
 
-async function decryptPayload(uid, cipherText, ivBase64) {
+async function decryptMeta(uid, cipherMeta, ivBase64) {
   try {
     const key = await deriveUserKey(uid);
     const iv = Uint8Array.from(atob(ivBase64), (c) => c.charCodeAt(0));
-    const cipherBytes = Uint8Array.from(atob(cipherText), (c) => c.charCodeAt(0));
+    const cipherBytes = Uint8Array.from(atob(cipherMeta), (c) => c.charCodeAt(0));
     const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipherBytes);
     return JSON.parse(new TextDecoder().decode(decryptedBuffer));
   } catch {
-    return { name: "Certificado Protegido", fileName: "comprovante.pdf" };
+    return { name: "Certificado", fileName: "certificado.jpg" };
   }
-}
-
-async function computeFileHash(fileBlob) {
-  const buffer = await fileBlob.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 /**
  * ============================================================================
- * 3. BANCO LOCAL INDEXEDDB (ARMAZENA OS PDFS/IMAGENS SEM USAR FIREBASE STORAGE)
+ * 4. CACHE LOCAL INDEXEDDB
  * ============================================================================
  */
-const DB_NAME = "ChronosObsidianDB";
+const DB_NAME = "ChronosZeroFrictionDB";
 const STORE_CERTS = "certificates";
 
 function openLocalDB() {
@@ -134,108 +177,188 @@ async function deleteLocalCert(id) {
 
 /**
  * ============================================================================
- * 4. INTEGRAÇÃO COM O OBSIDIAN (VAULT FOLDER SYNC + GERADOR MARKDOWN + URI)
+ * 5. GERADOR DE RELATÓRIO COMPLETO EM PDF (TABELA DE HORAS + FOTOS ANEXADAS)
  * ============================================================================
  */
-let obsidianVaultHandle = null;
+async function generateCompletePdfReport(profile, certificates) {
+  if (!window.jspdf) {
+    alert("Biblioteca de PDF ainda carregando. Verifique sua conexão e tente novamente.");
+    return;
+  }
 
-function generateObsidianMarkdown(cert, profile) {
-  const dateIso = new Date(cert.createdAt).toISOString().split("T")[0];
-  return [
-    "---",
-    `titulo: "${cert.name.replace(/"/g, '\\"')}"`,
-    `categoria: "${cert.category}"`,
-    `horas: ${cert.hours}`,
-    `curso: "${profile.course}"`,
-    `cota_curso: ${profile.quota}`,
-    `data_registro: ${dateIso}`,
-    `sha256: "${cert.sha256}"`,
-    `tags: [horas-complementares, ${cert.category.toLowerCase()}]`,
-    "---",
-    "",
-    `# ${cert.name}`,
-    "",
-    `- **Categoria:** ${cert.category}`,
-    `- **Carga Horária Computada:** \`${cert.hours}h\``,
-    `- **Arquivo Original:** \`${cert.fileName}\``,
-    `- **Hash de Integridade (SHA-256):** \`${cert.sha256}\``,
-    "",
-    "## Comprovante Anexado",
-    `![[Anexos/${cert.fileName}]]`,
-    ""
-  ].join("\n");
-}
+  if (certificates.length === 0) {
+    alert("Adicione pelo menos um certificado antes de gerar o relatório em PDF.");
+    return;
+  }
 
-async function syncCertificateToObsidianFolder(cert, profile, allCerts) {
-  if (!obsidianVaultHandle) return false;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-  try {
-    // 1. Cria subpasta "Horas_Complementares" e "Anexos" dentro do Vault do Obsidian
-    const rootFolder = await obsidianVaultHandle.getDirectoryHandle("Horas_Complementares", { create: true });
-    const attachFolder = await rootFolder.getDirectoryHandle("Anexos", { create: true });
+  const quota = Number(profile.quota) || 200;
+  const totalDone = certificates.reduce((sum, c) => sum + Number(c.hours), 0);
+  const remaining = Math.max(quota - totalDone, 0);
+  const percent = quota > 0 ? Math.min(Math.round((totalDone / quota) * 100), 100) : 0;
+  const emissionDate = new Date().toLocaleDateString("pt-BR");
 
-    // 2. Salva o PDF/Imagem físico dentro de Horas_Complementares/Anexos/
-    if (cert.fileBlob) {
-      const fileHandle = await attachFolder.getFileHandle(cert.fileName, { create: true });
-      const writableFile = await fileHandle.createWritable();
-      await writableFile.write(cert.fileBlob);
-      await writableFile.close();
+  // 1. Cabeçalho Institucional (Página 1)
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, 210, 40, "F");
+
+  doc.setTextColor(6, 182, 212);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("CHRONOS ACADÊMICO — DOSSIÊ DE INTEGRALIZAÇÃO CURRICULAR", 14, 14);
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.text("Relatório de Horas Complementares", 14, 24);
+
+  doc.setTextColor(148, 163, 184);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Curso: ${profile.course || "Graduação"}  |  Estudante: ${profile.email}  |  Emissão: ${emissionDate}`, 14, 33);
+
+  // 2. Quadro de Resumo de Métricas
+  doc.setFillColor(241, 245, 249);
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(14, 48, 182, 24, 3, 3, "FD");
+
+  doc.setTextColor(71, 85, 105);
+  doc.setFontSize(9);
+  doc.text("COTA EXIGIDA", 22, 56);
+  doc.text("HORAS COMPUTADAS", 72, 56);
+  doc.text("HORAS RESTANTES", 126, 56);
+  doc.text("PROGRESSO", 170, 56);
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text(`${quota}h`, 22, 65);
+  doc.setTextColor(8, 145, 178);
+  doc.text(`${totalDone}h`, 72, 65);
+  doc.setTextColor(remaining === 0 ? 16 : 217, remaining === 0 ? 185 : 119, remaining === 0 ? 129 : 6);
+  doc.text(`${remaining}h`, 126, 65);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${percent}%`, 170, 65);
+
+  // 3. Tabela de Certificados Computados
+  let y = 84;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(15, 23, 42);
+  doc.text("1. Quadro Detalhado de Atividades e Certificados", 14, y);
+  y += 6;
+
+  // Cabeçalho da Tabela
+  doc.setFillColor(30, 41, 59);
+  doc.rect(14, y, 182, 8, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.text("Nº", 18, y + 5.5);
+  doc.text("ATIVIDADE / EVENTO", 32, y + 5.5);
+  doc.text("CATEGORIA", 132, y + 5.5);
+  doc.text("DATA", 162, y + 5.5);
+  doc.text("HORAS", 182, y + 5.5);
+  y += 8;
+
+  // Linhas da Tabela
+  doc.setFont("helvetica", "normal");
+  certificates.forEach((cert, index) => {
+    if (y > 265) {
+      doc.addPage();
+      y = 20;
     }
 
-    // 3. Cria a Nota Markdown (.md) do Certificado com Frontmatter YAML
-    const safeTitle = cert.name.replace(/[\\/:*?"<>|]/g, "-");
-    const mdFileName = `${safeTitle}.md`;
-    const mdHandle = await rootFolder.getFileHandle(mdFileName, { create: true });
-    const writableMd = await mdHandle.createWritable();
-    await writableMd.write(generateObsidianMarkdown(cert, profile));
-    await writableMd.close();
+    if (index % 2 === 0) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(14, y, 182, 8, "F");
+    }
 
-    // 4. Atualiza a nota "_Painel_Horas.md" no Obsidian com o resumo geral
-    await updateObsidianDashboardNote(rootFolder, profile, allCerts);
-    return true;
-  } catch (err) {
-    console.warn("Não foi possível gravar direto na pasta do Obsidian:", err);
-    return false;
+    const numStr = String(index + 1).padStart(2, "0");
+    const titleStr = cert.name.length > 52 ? cert.name.slice(0, 49) + "..." : cert.name;
+    const dateStr = new Date(cert.createdAt).toLocaleDateString("pt-BR");
+
+    doc.setTextColor(15, 23, 42);
+    doc.text(`#${numStr}`, 18, y + 5.5);
+    doc.text(titleStr, 32, y + 5.5);
+    doc.text(String(cert.category), 132, y + 5.5);
+    doc.text(dateStr, 162, y + 5.5);
+
+    doc.setFont("helvetica", "bold");
+    doc.text(`${cert.hours}h`, 183, y + 5.5);
+    doc.setFont("helvetica", "normal");
+
+    y += 8;
+  });
+
+  // Linha de Totalização
+  doc.setFillColor(226, 232, 240);
+  doc.rect(14, y, 182, 9, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(15, 23, 42);
+  doc.text("TOTAL GERAL COMPUTADO", 18, y + 6);
+  doc.text(`${totalDone}h / ${quota}h`, 175, y + 6);
+
+  // 4. Páginas de Anexos com as Imagens dos Certificados
+  for (let i = 0; i < certificates.length; i++) {
+    const cert = certificates[i];
+    if (!cert.fileData || !cert.fileData.startsWith("data:image")) continue;
+
+    doc.addPage();
+
+    // Topo da Página do Anexo
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 26, "F");
+
+    doc.setTextColor(6, 182, 212);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(`COMPROVANTE ANEXO #${String(i + 1).padStart(2, "0")}`, 14, 10);
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13);
+    const cleanTitle = cert.name.length > 65 ? cert.name.slice(0, 62) + "..." : cert.name;
+    doc.text(cleanTitle, 14, 19);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Categoria: ${cert.category}   |   Carga Horária Validada: +${cert.hours} horas`, 14, 35);
+
+    // Calcula proporção da imagem para caber perfeitamente na folha A4
+    try {
+      const dims = await getImageDimensions(cert.fileData);
+      const maxW = 182;
+      const maxH = 230;
+      const ratio = Math.min(maxW / dims.width, maxH / dims.height);
+      const renderW = dims.width * ratio;
+      const renderH = dims.height * ratio;
+      const offsetX = 14 + (maxW - renderW) / 2;
+
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(offsetX - 1, 41, renderW + 2, renderH + 2);
+      doc.addImage(cert.fileData, "JPEG", offsetX, 42, renderW, renderH);
+    } catch {
+      doc.text("Imagem anexada em formato incompatível para pré-visualização.", 14, 50);
+    }
   }
+
+  const safeCourse = (profile.course || "Faculdade").replace(/[^a-zA-Z0-9_-]/g, "_");
+  doc.save(`Relatorio_Horas_Complementares_${safeCourse}.pdf`);
 }
 
-async function updateObsidianDashboardNote(rootFolder, profile, allCerts) {
-  const doneHours = allCerts.reduce((acc, c) => acc + Number(c.hours), 0);
-  const leftHours = Math.max(profile.quota - doneHours, 0);
-  const percent = profile.quota > 0 ? Math.min(Math.round((doneHours / profile.quota) * 100), 100) : 0;
-
-  const rows = allCerts
-    .map((c) => `| [[${c.name.replace(/[\\/:*?"<>|]/g, "-")}]] | ${c.category} | +${c.hours}h | \`${c.fileName}\` |`)
-    .join("\n");
-
-  const dashboardMd = [
-    "---",
-    `curso: "${profile.course}"`,
-    `cota_total: ${profile.quota}`,
-    `horas_concluidas: ${doneHours}`,
-    `horas_restantes: ${leftHours}`,
-    `progresso: "${percent}%"`,
-    "---",
-    "",
-    `# Painel de Horas Complementares — ${profile.course}`,
-    "",
-    `> **Progresso:** ${doneHours}h de ${profile.quota}h concluídas (${percent}%) — **Faltam ${leftHours}h**`,
-    "",
-    "| Certificado | Categoria | Horas | Arquivo |",
-    "| :--- | :--- | :---: | :--- |",
-    rows || "| _Nenhum certificado cadastrado_ | - | 0h | - |",
-    ""
-  ].join("\n");
-
-  const dashHandle = await rootFolder.getFileHandle("_Painel_Horas.md", { create: true });
-  const writable = await dashHandle.createWritable();
-  await writable.write(dashboardMd);
-  await writable.close();
+function getImageDimensions(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.width, height: img.height });
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
 }
 
 /**
  * ============================================================================
- * 5. CONEXÃO COM FIREBASE AUTH + FIRESTORE
+ * 6. FIREBASE AUTH + FIRESTORE
  * ============================================================================
  */
 let fbApp = null;
@@ -271,8 +394,7 @@ async function authenticateWithGoogle(registrationMeta = null) {
       uid: user.uid,
       name: user.displayName || "Estudante",
       email: user.email,
-      course: registrationMeta?.course || "Administração - UFSJ",
-      vaultName: registrationMeta?.vaultName || "Faculdade",
+      course: registrationMeta?.course || "Graduação",
       quota: Number(registrationMeta?.quota || 200),
       updatedAt: Date.now()
     };
@@ -282,7 +404,6 @@ async function authenticateWithGoogle(registrationMeta = null) {
     } else {
       await setDoc(userRef, {
         course: profile.course,
-        vaultName: profile.vaultName,
         quota: profile.quota,
         updatedAt: Date.now()
       }, { merge: true });
@@ -291,14 +412,12 @@ async function authenticateWithGoogle(registrationMeta = null) {
     localStorage.setItem("chronos_user", JSON.stringify(profile));
     window.location.href = "index.html";
   } else {
-    // Fallback Local imediato para testar no VS Code antes de colar as chaves
     const savedProfile = JSON.parse(localStorage.getItem("chronos_user") || "null");
     const profile = {
       uid: "local-student-ufsj",
       name: "Estudante Universitário",
       email: "estudante@ufsj.edu.br",
       course: registrationMeta?.course || savedProfile?.course || "Administração - UFSJ",
-      vaultName: registrationMeta?.vaultName || savedProfile?.vaultName || "Faculdade",
       quota: Number(registrationMeta?.quota || savedProfile?.quota || 200)
     };
     localStorage.setItem("chronos_user", JSON.stringify(profile));
@@ -308,7 +427,7 @@ async function authenticateWithGoogle(registrationMeta = null) {
 
 /**
  * ============================================================================
- * 6. ROTEAMENTO POR PÁGINA (login.html | cadastro.html | index.html)
+ * 7. ROTEAMENTO DE PÁGINAS
  * ============================================================================
  */
 const currentPage = document.body.dataset.page;
@@ -316,8 +435,8 @@ const envStatusEl = document.getElementById("env-status");
 
 if (envStatusEl) {
   envStatusEl.textContent = isFirebaseReady
-    ? "Firebase Auth + Criptografia AES-GCM Ativos"
-    : "Modo Local VS Code Ativo (cole seu firebaseConfig no app.js para nuvem)";
+    ? "Nuvem Firestore Ativa"
+    : "Modo de Teste Local Ativo (adicione seu firebaseConfig no app.js)";
 }
 
 if (currentPage === "login") {
@@ -342,12 +461,11 @@ if (currentPage === "register") {
   regForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const course = document.getElementById("reg-course").value.trim();
-    const vaultName = document.getElementById("reg-vault").value.trim();
     const quota = Number(document.getElementById("reg-quota").value);
 
     try {
       alertBox.hidden = true;
-      await authenticateWithGoogle({ course, vaultName, quota });
+      await authenticateWithGoogle({ course, quota });
     } catch (err) {
       alertBox.hidden = false;
       alertBox.textContent = `Erro ao cadastrar (${err.code || "Auth"}): verifique os domínios autorizados no Firebase.`;
@@ -361,7 +479,7 @@ if (currentPage === "dashboard") {
 
 /**
  * ============================================================================
- * 7. CONTROLADOR DO DASHBOARD (index.html)
+ * 8. PAINEL PRINCIPAL (DASHBOARD)
  * ============================================================================
  */
 async function initDashboard() {
@@ -371,7 +489,6 @@ async function initDashboard() {
     return;
   }
 
-  // Referências DOM
   const courseTitle = document.getElementById("user-course-title");
   const emailSubtitle = document.getElementById("user-display-email");
   const headerQuotaVal = document.getElementById("header-quota-val");
@@ -387,8 +504,8 @@ async function initDashboard() {
   const certForm = document.getElementById("cert-form");
   const certFileInput = document.getElementById("cert-file");
   const dropzoneText = document.getElementById("dropzone-text");
-  const btnLinkObsidian = document.getElementById("btn-link-obsidian");
-  const obsidianStatusText = document.getElementById("obsidian-status-text");
+  const btnSubmitText = document.getElementById("btn-submit-text");
+  const btnExportPdf = document.getElementById("btn-export-pdf");
 
   const quotaModal = document.getElementById("quota-modal");
   const quotaForm = document.getElementById("quota-form");
@@ -396,11 +513,15 @@ async function initDashboard() {
   const btnCloseModal = document.getElementById("btn-close-modal");
   const btnLogout = document.getElementById("btn-logout");
 
+  const previewModal = document.getElementById("preview-modal");
+  const previewTitle = document.getElementById("preview-title");
+  const previewBody = document.getElementById("preview-body");
+  const btnClosePreview = document.getElementById("btn-close-preview");
+
   const CIRCUMFERENCE = 2 * Math.PI * 92;
   let certificates = await getLocalCerts(profile.uid);
   let searchQuery = "";
 
-  // Sincroniza metadados criptografados do Firestore (se configurado)
   if (isFirebaseReady) {
     try {
       const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
@@ -411,29 +532,30 @@ async function initDashboard() {
       for (const docSnap of snap.docs) {
         if (!localIds.has(docSnap.id)) {
           const data = docSnap.data();
-          const decrypted = await decryptPayload(profile.uid, data.cipherText, data.iv);
-          certificates.push({
+          const decrypted = await decryptMeta(profile.uid, data.cipherMeta, data.iv);
+          const syncedCert = {
             id: docSnap.id,
             userId: profile.uid,
             name: decrypted.name,
             fileName: decrypted.fileName,
             category: data.category,
             hours: data.hours,
-            sha256: data.sha256,
-            createdAt: data.createdAt,
-            fileBlob: null // Metadado vindo da nuvem/Obsidian
-          });
+            fileData: data.fileData,
+            createdAt: data.createdAt
+          };
+          await saveLocalCert(syncedCert);
+          certificates.push(syncedCert);
         }
       }
       certificates.sort((a, b) => b.createdAt - a.createdAt);
     } catch (e) {
-      console.warn("Modo offline local ativo:", e);
+      console.warn("Usando cache local:", e);
     }
   }
 
   function renderUI() {
     courseTitle.textContent = profile.course || "Chronos Acadêmico";
-    emailSubtitle.textContent = `${profile.email} • Vault: ${profile.vaultName || "Faculdade"}`;
+    emailSubtitle.textContent = profile.email;
 
     const quota = Number(profile.quota) || 200;
     const done = certificates.reduce((sum, c) => sum + Number(c.hours), 0);
@@ -460,84 +582,76 @@ async function initDashboard() {
     const filtered = certificates.filter(
       (c) =>
         c.name.toLowerCase().includes(searchQuery) ||
-        c.category.toLowerCase().includes(searchQuery) ||
-        c.fileName.toLowerCase().includes(searchQuery)
+        c.category.toLowerCase().includes(searchQuery)
     );
 
     if (filtered.length === 0) {
       vaultGrid.innerHTML = `
         <div class="text-dim" style="grid-column: 1 / -1; text-align: center; padding: 32px;">
-          Nenhum certificado registrado. Adicione um comprovante acima para gerar sua nota no Obsidian!
+          Nenhum certificado salvo ainda. Envie a foto do seu primeiro certificado acima!
         </div>
       `;
       return;
     }
 
     vaultGrid.innerHTML = filtered
-      .map(
-        (cert) => `
+      .map((cert) => {
+        const isImage = cert.fileData && cert.fileData.startsWith("data:image");
+        const thumbHtml = isImage
+          ? `<img src="${cert.fileData}" alt="${escapeHtml(cert.name)}" class="cert-thumb" data-action="preview" data-id="${cert.id}" />`
+          : `<div class="cert-thumb centered text-dim" data-action="preview" data-id="${cert.id}"><i class="ph ph-file-pdf" style="font-size: 42px;"></i></div>`;
+
+        return `
         <article class="cert-item" role="listitem">
           <div>
-            <div class="cert-item__meta">
+            ${thumbHtml}
+            <div class="cert-item__meta" style="margin-top: 12px;">
               <span class="badge">${escapeHtml(cert.category)}</span>
               <strong class="mono-text text-cyan">+${Number(cert.hours)}h</strong>
             </div>
             <h4 class="cert-item__title">${escapeHtml(cert.name)}</h4>
-            <p class="cert-item__file truncate" title="${escapeHtml(cert.fileName)}">
-              <i class="ph ph-file-pdf"></i> ${escapeHtml(cert.fileName)}
-            </p>
           </div>
 
           <div class="cert-item__actions">
-            <button type="button" class="btn btn--ghost" data-action="download-file" data-id="${cert.id}" title="Baixar PDF/Imagem">
+            <button type="button" class="btn btn--ghost" style="flex: 1;" data-action="preview" data-id="${cert.id}">
+              <i class="ph ph-eye"></i>
+              <span>Ver</span>
+            </button>
+            <button type="button" class="btn btn--ghost" style="flex: 1;" data-action="download" data-id="${cert.id}">
               <i class="ph-bold ph-download-simple"></i>
-              <span>Arquivo</span>
-            </button>
-            <button type="button" class="btn btn--obsidian" data-action="open-obsidian" data-id="${cert.id}" title="Enviar nota para o app Obsidian">
-              <i class="ph-fill ph-notebook"></i>
-              <span>Obsidian</span>
-            </button>
-            <button type="button" class="btn btn--icon" data-action="download-md" data-id="${cert.id}" title="Baixar nota .md">
-              <i class="ph ph-markdown-logo"></i>
+              <span>Baixar</span>
             </button>
             <button type="button" class="btn btn--icon" data-action="delete" data-id="${cert.id}" title="Excluir">
               <i class="ph ph-trash"></i>
             </button>
           </div>
         </article>
-      `
-      )
+      `;
+      })
       .join("");
   }
 
   renderUI();
 
-  // Vincular pasta física do Obsidian Vault (File System Access API)
-  btnLinkObsidian.addEventListener("click", async () => {
-    if (!("showDirectoryPicker" in window)) {
-      alert("Seu navegador atual usa o botão 'Obsidian' em cada card (via protocolo obsidian://) ou download direto de .md.");
-      return;
-    }
+  // Botão de Exportar Relatório Completo em PDF
+  btnExportPdf.addEventListener("click", async () => {
+    const span = btnExportPdf.querySelector("span");
+    const originalText = span.textContent;
     try {
-      obsidianVaultHandle = await window.showDirectoryPicker({ mode: "readwrite" });
-      obsidianStatusText.textContent = `Vault: ${obsidianVaultHandle.name}`;
-      // Sincroniza todos os certificados atuais na pasta escolhida
-      for (const cert of certificates) {
-        await syncCertificateToObsidianFolder(cert, profile, certificates);
-      }
-    } catch {
-      // Usuário cancelou a janela de pasta
+      span.textContent = "Gerando PDF...";
+      await generateCompletePdfReport(profile, certificates);
+    } finally {
+      span.textContent = originalText;
     }
   });
 
   certFileInput.addEventListener("change", () => {
     const file = certFileInput.files[0];
     dropzoneText.textContent = file
-      ? `Selecionado: ${file.name}`
-      : "Toque para selecionar ou arraste o certificado";
+      ? `Imagem pronta: ${file.name}`
+      : "Toque para enviar a imagem do certificado";
   });
 
-  // Adicionar Certificado (Local + Obsidian Vault + Firestore Criptografado)
   certForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = document.getElementById("cert-name").value.trim();
@@ -547,98 +661,78 @@ async function initDashboard() {
 
     if (!file || hours <= 0) return;
 
-    const sha256 = await computeFileHash(file);
-    const safeNoteName = `Horas_Complementares/${name.replace(/[\\/:*?"<>|]/g, "-")}.md`;
+    try {
+      btnSubmitText.textContent = "Otimizando e salvando...";
+      const compressedDataUrl = await compressFileToDataUrl(file);
+      const cleanFileName = file.type.startsWith("image/")
+        ? file.name.replace(/\.[^.]+$/, "") + ".jpg"
+        : file.name;
 
-    const newCert = {
-      id: crypto.randomUUID(),
-      userId: profile.uid,
-      name,
-      category,
-      hours,
-      fileName: file.name,
-      fileType: file.type || "application/octet-stream",
-      fileBlob: file,
-      sha256,
-      obsidianNotePath: safeNoteName,
-      createdAt: Date.now()
-    };
+      const newCert = {
+        id: crypto.randomUUID(),
+        userId: profile.uid,
+        name,
+        category,
+        hours,
+        fileName: cleanFileName,
+        fileData: compressedDataUrl,
+        createdAt: Date.now()
+      };
 
-    // 1. Salva no banco local IndexedDB
-    await saveLocalCert(newCert);
-    certificates = [newCert, ...certificates];
-    renderUI();
+      await saveLocalCert(newCert);
+      certificates = [newCert, ...certificates];
+      renderUI();
 
-    // 2. Se a pasta do Vault Obsidian estiver vinculada, grava o PDF e a nota .md lá dentro
-    await syncCertificateToObsidianFolder(newCert, profile, certificates);
-
-    // 3. Salva metadados criptografados (AES-GCM) no Firestore (sem usar Firebase Storage)
-    if (isFirebaseReady) {
-      try {
+      if (isFirebaseReady) {
         const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
         const { fbDb } = await initFirebaseModules();
-        const encrypted = await encryptPayload(profile.uid, {
+        const encrypted = await encryptMeta(profile.uid, {
           name: newCert.name,
           fileName: newCert.fileName
         });
 
         await setDoc(doc(fbDb, "users", profile.uid, "certificates", newCert.id), {
-          cipherText: encrypted.cipherText,
+          cipherMeta: encrypted.cipherMeta,
           iv: encrypted.iv,
+          fileData: newCert.fileData,
           hours: newCert.hours,
           category: newCert.category,
-          sha256: newCert.sha256,
-          obsidianNotePath: newCert.obsidianNotePath,
           createdAt: newCert.createdAt
         });
-      } catch (err) {
-        console.warn("Erro ao sincronizar metadado criptografado no Firestore:", err);
       }
-    }
 
-    certForm.reset();
-    dropzoneText.textContent = "Toque para selecionar ou arraste o certificado";
+      certForm.reset();
+      dropzoneText.textContent = "Toque para enviar a imagem do certificado";
+    } catch (err) {
+      alert(err.message || "Erro ao processar a imagem.");
+    } finally {
+      btnSubmitText.textContent = "Salvar Certificado & Somar Horas";
+    }
   });
 
-  // Ações nos Cards do Cofre (Baixar Arquivo, Abrir no Obsidian via URI, Baixar .md, Excluir)
   vaultGrid.addEventListener("click", async (e) => {
-    const btn = e.target.closest("button[data-action]");
-    if (!btn) return;
+    const trigger = e.target.closest("[data-action]");
+    if (!trigger) return;
 
-    const { action, id } = btn.dataset;
+    const { action, id } = trigger.dataset;
     const cert = certificates.find((c) => c.id === id);
     if (!cert) return;
 
-    if (action === "download-file") {
-      if (!cert.fileBlob) {
-        alert("Este arquivo está salvo na pasta Anexos do seu Vault Obsidian.");
-        return;
+    if (action === "preview") {
+      previewTitle.textContent = `${cert.name} (+${cert.hours}h)`;
+      if (cert.fileData.startsWith("data:image")) {
+        previewBody.innerHTML = `<img src="${cert.fileData}" alt="${escapeHtml(cert.name)}" />`;
+      } else {
+        previewBody.innerHTML = `<iframe src="${cert.fileData}" width="100%" height="500px" style="border:none;"></iframe>`;
       }
-      const url = URL.createObjectURL(cert.fileBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = cert.fileName;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 2500);
+      previewModal.showModal();
     }
 
-    if (action === "download-md") {
-      const mdContent = generateObsidianMarkdown(cert, profile);
-      const blob = new Blob([mdContent], { type: "text/markdown;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
+    if (action === "download") {
       const a = document.createElement("a");
-      a.href = url;
-      a.download = `${cert.name.replace(/[\\/:*?"<>|]/g, "-")}.md`;
+      a.href = cert.fileData;
+      a.download = cert.fileName || `${cert.name}.jpg`;
       a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 2500);
-    }
-
-    if (action === "open-obsidian") {
-      const mdContent = generateObsidianMarkdown(cert, profile);
-      const vault = encodeURIComponent(profile.vaultName || "Faculdade");
-      const file = encodeURIComponent(`Horas_Complementares/${cert.name.replace(/[\\/:*?"<>|]/g, "-")}`);
-      const content = encodeURIComponent(mdContent);
-      window.location.href = `obsidian://new?vault=${vault}&file=${file}&content=${content}`;
     }
 
     if (action === "delete") {
@@ -652,16 +746,16 @@ async function initDashboard() {
           const { fbDb } = await initFirebaseModules();
           await deleteDoc(doc(fbDb, "users", profile.uid, "certificates", id));
         } catch (err) {
-          console.warn("Erro ao remover do Firestore:", err);
+          console.warn("Erro ao excluir do Firestore:", err);
         }
       }
     }
   });
 
-  // Editar Cota / Curso / Nome do Vault
+  btnClosePreview.addEventListener("click", () => previewModal.close());
+
   btnOpenQuota.addEventListener("click", () => {
     document.getElementById("input-course").value = profile.course || "Administração - UFSJ";
-    document.getElementById("input-vault").value = profile.vaultName || "Faculdade";
     document.getElementById("input-quota").value = profile.quota || 200;
     quotaModal.showModal();
   });
@@ -670,7 +764,6 @@ async function initDashboard() {
 
   quotaForm.addEventListener("submit", async () => {
     profile.course = document.getElementById("input-course").value.trim();
-    profile.vaultName = document.getElementById("input-vault").value.trim();
     profile.quota = Number(document.getElementById("input-quota").value) || 200;
     localStorage.setItem("chronos_user", JSON.stringify(profile));
     renderUI();
@@ -681,12 +774,11 @@ async function initDashboard() {
         const { fbDb } = await initFirebaseModules();
         await setDoc(doc(fbDb, "users", profile.uid), {
           course: profile.course,
-          vaultName: profile.vaultName,
           quota: profile.quota,
           updatedAt: Date.now()
         }, { merge: true });
       } catch (err) {
-        console.warn("Erro ao atualizar cota no Firestore:", err);
+        console.warn("Erro ao atualizar cota:", err);
       }
     }
   });

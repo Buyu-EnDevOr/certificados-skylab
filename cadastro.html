@@ -17,47 +17,40 @@
       <div class="brand-pill">
         <span class="status-dot"></span>
         <i class="ph-fill ph-student"></i>
-        <span>CADASTRO ACADÊMICO</span>
+        <span>CADASTRO RÁPIDO</span>
       </div>
 
-      <h1 class="balance">Configure sua meta universitária.</h1>
+      <h1 class="balance">Configure a meta da sua faculdade.</h1>
       <p class="pretty">
-        Defina os parâmetros do seu curso e vincule sua conta Google para criar seu cofre criptografado.
+        Informe seu curso e quantas horas complementares sua faculdade exige para se formar.
       </p>
 
       <div id="auth-alert" class="alert-box" hidden></div>
 
       <form id="register-form" class="stack" style="width: 100%; text-align: left;">
         <div class="field">
-          <label for="reg-course" class="field__label">Curso e Instituição</label>
+          <label for="reg-course" class="field__label">Seu Curso e Faculdade</label>
           <input type="text" id="reg-course" class="field__input" placeholder="Ex: Administração - UFSJ" required />
         </div>
 
-        <div class="form-row">
-          <div class="field">
-            <label for="reg-vault" class="field__label">Nome do Vault no Obsidian</label>
-            <input type="text" id="reg-vault" class="field__input" placeholder="Ex: Faculdade" value="Faculdade" required />
-          </div>
-
-          <div class="field">
-            <label for="reg-quota" class="field__label">Cota Exigida (h)</label>
-            <input type="number" id="reg-quota" class="field__input mono-text" min="10" max="3000" value="200" required />
-          </div>
+        <div class="field">
+          <label for="reg-quota" class="field__label">Cota de Horas Exigida pela Faculdade</label>
+          <input type="number" id="reg-quota" class="field__input mono-text" min="10" max="5000" value="200" required />
         </div>
 
-        <button type="submit" id="btn-google-register" class="btn btn--google" style="margin-top: 8px;">
+        <button type="submit" class="btn btn--google" style="margin-top: 8px;">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="Google" />
-          <span>Cadastrar com Google</span>
+          <span>Concluir Cadastro com Google</span>
         </button>
       </form>
 
       <div class="auth-divider">
-        <span>Já possui conta?</span>
+        <span>Já tem conta?</span>
       </div>
 
       <a href="login.html" class="btn btn--ghost" style="width: 100%;">
         <i class="ph ph-sign-in"></i>
-        <span>Fazer login na minha conta</span>
+        <span>Já tenho conta, fazer login</span>
       </a>
 
       <p id="env-status" class="mono-tag"></p>

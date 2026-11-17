@@ -3,11 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Painel | Chronos × Obsidian</title>
+  <title>Painel | Chronos Acadêmico</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- Biblioteca jsPDF para gerar o PDF A4 direto no navegador/celular -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body data-page="dashboard">
@@ -26,10 +28,9 @@
       </div>
 
       <div class="cluster">
-        <!-- Botão para Conectar Pasta Local do Obsidian Vault -->
-        <button type="button" id="btn-link-obsidian" class="btn btn--obsidian" title="Sincronizar direto com pasta do Obsidian">
-          <i class="ph-fill ph-notebook"></i>
-          <span id="obsidian-status-text">Vincular Pasta Obsidian</span>
+        <button type="button" id="btn-export-pdf" class="btn btn--pdf" title="Gerar dossiê completo em PDF para a faculdade">
+          <i class="ph-bold ph-file-pdf"></i>
+          <span>Baixar Relatório PDF</span>
         </button>
 
         <button type="button" id="btn-open-quota" class="btn btn--ghost">
@@ -51,7 +52,7 @@
         <div class="panel-header cluster">
           <div>
             <h3>Progresso da Cota</h3>
-            <p class="text-dim">Criptografia AES-GCM + Índices Obsidian</p>
+            <p class="text-dim">Cálculo automático das suas horas</p>
           </div>
           <span id="status-badge" class="badge">Em andamento</span>
         </div>
@@ -92,14 +93,14 @@
       <!-- COLUNA 2: ADICIONAR CERTIFICADO -->
       <section class="glass-card widget stack">
         <div class="panel-header">
-          <h3>Novo Certificado</h3>
-          <p class="text-dim">Gera nota Markdown no Obsidian + Backup local + Metadado criptografado no Firestore</p>
+          <h3>Guardar Novo Certificado</h3>
+          <p class="text-dim">Envie a foto ou print do certificado — nós comprimimos e salvamos na nuvem automaticamente</p>
         </div>
 
         <form id="cert-form" class="stack">
           <div class="field">
-            <label for="cert-name" class="field__label">Título da Atividade ou Evento</label>
-            <input type="text" id="cert-name" class="field__input" placeholder="Ex: Semana Acadêmica de Administração" required />
+            <label for="cert-name" class="field__label">Nome do Evento ou Curso</label>
+            <input type="text" id="cert-name" class="field__input" placeholder="Ex: Palestra de Gestão, Curso de Excel..." required />
           </div>
 
           <div class="form-row">
@@ -108,30 +109,30 @@
               <select id="cert-category" class="field__input">
                 <option value="Ensino">Ensino / Curso</option>
                 <option value="Extensão">Extensão / Evento</option>
-                <option value="Pesquisa">Pesquisa / Artigo</option>
+                <option value="Pesquisa">Pesquisa / Iniciação</option>
                 <option value="Monitoria">Monitoria / Estágio</option>
               </select>
             </div>
 
             <div class="field">
-              <label for="cert-hours" class="field__label">Carga Horária (h)</label>
-              <input type="number" id="cert-hours" class="field__input mono-text" min="1" max="1000" placeholder="Ex: 20" required />
+              <label for="cert-hours" class="field__label">Horas do Certificado</label>
+              <input type="number" id="cert-hours" class="field__input mono-text" min="1" max="1000" placeholder="Ex: 10" required />
             </div>
           </div>
 
           <div class="field">
-            <span class="field__label">Comprovante (PDF, PNG, JPG)</span>
+            <span class="field__label">Imagem do Certificado (Foto, Print ou PDF leve)</span>
             <label for="cert-file" class="dropzone">
-              <i class="ph-duotone ph-cloud-arrow-up dropzone__icon"></i>
-              <span id="dropzone-text" class="dropzone__title">Toque para selecionar ou arraste o certificado</span>
-              <span class="dropzone__hint">Salvo na pasta do seu Obsidian Vault e no banco local</span>
-              <input type="file" id="cert-file" accept=".pdf,image/*" class="sr-only" required />
+              <i class="ph-duotone ph-image dropzone__icon"></i>
+              <span id="dropzone-text" class="dropzone__title">Toque para enviar a imagem do certificado</span>
+              <span class="dropzone__hint">Otimização automática para salvar direto na sua conta</span>
+              <input type="file" id="cert-file" accept="image/*,.pdf" class="sr-only" required />
             </label>
           </div>
 
-          <button type="submit" class="btn btn--primary">
-            <i class="ph-bold ph-plus-circle"></i>
-            <span>Computar Horas & Salvar no Obsidian</span>
+          <button type="submit" id="btn-submit-cert" class="btn btn--primary">
+            <i class="ph-bold ph-cloud-arrow-up"></i>
+            <span id="btn-submit-text">Salvar Certificado & Somar Horas</span>
           </button>
         </form>
       </section>
@@ -140,8 +141,8 @@
       <section class="glass-card widget vault-panel stack">
         <div class="vault-header cluster">
           <div>
-            <h3>Repositório de Certificados</h3>
-            <p class="text-dim">Baixe o PDF/Imagem original, exporte a nota .md ou abra direto no Obsidian</p>
+            <h3>Meus Certificados Salvos</h3>
+            <p class="text-dim">Visualize na tela, baixe individualmente ou gere o Relatório PDF único para a secretaria</p>
           </div>
 
           <div class="search-field">
@@ -156,24 +157,19 @@
     </main>
   </div>
 
-  <!-- MODAL PARA EDITAR META E VAULT -->
+  <!-- MODAL PARA EDITAR META E CURSO -->
   <dialog id="quota-modal" class="modal glass-card">
     <form id="quota-form" method="dialog" class="stack">
       <div class="panel-header cluster">
-        <h3>Configurações Acadêmicas</h3>
+        <h3>Editar Meta da Faculdade</h3>
         <button type="button" id="btn-close-modal" class="btn btn--icon" aria-label="Fechar">
           <i class="ph ph-x"></i>
         </button>
       </div>
 
       <div class="field">
-        <label for="input-course" class="field__label">Curso / Universidade</label>
+        <label for="input-course" class="field__label">Curso / Faculdade</label>
         <input type="text" id="input-course" class="field__input" required />
-      </div>
-
-      <div class="field">
-        <label for="input-vault" class="field__label">Nome do Vault no Obsidian</label>
-        <input type="text" id="input-vault" class="field__input" required />
       </div>
 
       <div class="field">
@@ -185,6 +181,19 @@
         <button type="submit" class="btn btn--primary">Salvar Alterações</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- MODAL PARA VISUALIZAR A IMAGEM DO CERTIFICADO -->
+  <dialog id="preview-modal" class="modal modal--large glass-card">
+    <div class="stack">
+      <div class="panel-header cluster">
+        <h3 id="preview-title">Visualizar Certificado</h3>
+        <button type="button" id="btn-close-preview" class="btn btn--icon" aria-label="Fechar">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+      <div id="preview-body" class="preview-container centered"></div>
+    </div>
   </dialog>
 
   <script type="module" src="app.js"></script>
