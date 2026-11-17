@@ -449,7 +449,56 @@
       <div id="admin-feedback-list" class="admin-ticket-list stack"></div>
     </div>
   </dialog>
+<!-- MODAL PARA EDITAR CERTIFICADO SALVO -->
+  <dialog id="edit-cert-modal" class="modal glass-card">
+    <form id="edit-cert-form" method="dialog" class="stack">
+      <div class="panel-header cluster">
+        <div class="cluster">
+          <i class="ph-duotone ph-pencil-simple text-cyan" style="font-size: 22px;"></i>
+          <h3>Editar Certificado</h3>
+        </div>
+        <button type="button" id="btn-close-edit-cert" class="btn btn--icon" aria-label="Fechar">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
 
+      <input type="hidden" id="edit-cert-id" />
+
+      <div class="field">
+        <label for="edit-cert-name" class="field__label">Nome do Evento ou Curso</label>
+        <input type="text" id="edit-cert-name" class="field__input" required />
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="edit-cert-category" class="field__label">Categoria</label>
+          <select id="edit-cert-category" class="field__input">
+            <option value="Ensino">Ensino / Curso</option>
+            <option value="Extensão">Extensão / Evento</option>
+            <option value="Pesquisa">Pesquisa / Iniciação</option>
+            <option value="Monitoria">Monitoria / Estágio</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="edit-cert-hours" class="field__label">Horas</label>
+          <input type="number" id="edit-cert-hours" class="field__input mono-text" min="1" max="1000" required />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="edit-cert-file" class="field__label">Trocar Imagem (Opcional — deixe vazio para manter a atual)</label>
+        <input type="file" id="edit-cert-file" accept="image/*,.pdf" class="field__input" />
+      </div>
+
+      <div class="cluster modal-actions">
+        <button type="submit" id="btn-save-edit-cert" class="btn btn--primary" style="width: 100%;">
+          <i class="ph-bold ph-check"></i>
+          <span id="btn-save-edit-text">Salvar Alterações</span>
+        </button>
+      </div>
+    </form>
+  </dialog>
   <script type="module" src="app.js"></script>
 </body>
 </html>

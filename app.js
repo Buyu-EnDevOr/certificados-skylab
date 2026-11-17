@@ -461,6 +461,88 @@ async function initDashboard() {
     window.location.href = "login.html";
     return;
   }
+  // Referências do Modal de Edição de Certificado
+  const editCertModal = document.getElementById("edit-cert-modal");
+  const editCertForm = document.getElementById("edit-cert-form");
+  const editCertId = document.getElementById("edit-cert-id");
+  const editCertName = document.getElementById("edit-cert-name");
+  const editCertCategory = document.getElementById("edit-cert-category");
+  const editCertHours = document.getElementById("edit-cert-hours");
+  const editCertFile = document.getElementById("edit-cert-file");
+  const btnCloseEditCert = document.getElementById("btn-close-edit-cert");
+  const btnSaveEditText = document.getElementById("btn-save-edit-text");
+
+  if (btnCloseEditCert && editCertModal) {
+    btnCloseEditCert.addEventListener("click", () => editCertModal.close());
+  }
+
+  if (editCertForm) {
+    editCertForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = editCertId.value;
+      const certIndex = certificates.findIndex((c) => c.id === id);
+      if (certIndex === -1) return;
+
+      const currentCert = certificates[certIndex];
+      const updatedName = editCertName.value.trim();
+      const updatedCategory = editCertCategory.value;
+      const updatedHours = Number(editCertHours.value);
+      const newFile = editCertFile.files[0];
+
+      if (!updatedName || updatedHours <= 0) return;
+
+      try {
+        btnSaveEditText.textContent = "Salvando...";
+
+        let updatedFileData = currentCert.fileData;
+        let updatedFileName = currentCert.fileName;
+
+        // Se o aluno escolheu uma nova imagem, comprime e substitui
+        if (newFile) {
+          updatedFileData = await compressFileToDataUrl(newFile);
+          updatedFileName = newFile.type.startsWith("image/")
+            ? newFile.name.replace(/\.[^.]+$/, "") + ".jpg"
+            : newFile.name;
+        }
+
+        const updatedCert = {
+          ...currentCert,
+          name: updatedName,
+          category: updatedCategory,
+          hours: updatedHours,
+          fileName: updatedFileName,
+          fileData: updatedFileData
+        };
+
+        // 1. Atualiza no IndexedDB e recalcula o gráfico na hora
+        await saveLocalCert(updatedCert);
+        certificates[certIndex] = updatedCert;
+        renderUI();
+        editCertModal.close();
+
+        // 2. Atualiza o documento criptografado no Firestore
+        const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        const { fbDb } = await initFirebaseModules();
+        const encrypted = await encryptMeta(profile.uid, {
+          name: updatedCert.name,
+          fileName: updatedCert.fileName
+        });
+
+        await setDoc(doc(fbDb, "users", profile.uid, "certificates", updatedCert.id), {
+          cipherMeta: encrypted.cipherMeta,
+          iv: encrypted.iv,
+          fileData: updatedCert.fileData,
+          hours: updatedCert.hours,
+          category: updatedCert.category,
+          createdAt: updatedCert.createdAt
+        });
+      } catch (err) {
+        alert(err.message || "Erro ao atualizar o certificado.");
+      } finally {
+        btnSaveEditText.textContent = "Salvar Alterações";
+      }
+    });
+  }
 
   const courseTitle = document.getElementById("user-course-title");
   const emailSubtitle = document.getElementById("user-display-email");
@@ -653,7 +735,10 @@ async function initDashboard() {
               <i class="ph-bold ph-download-simple"></i>
               <span>Baixar</span>
             </button>
-            <button type="button" class="btn btn--icon" data-action="delete" data-id="${cert.id}" title="Excluir">
+            <button type="button" class="btn btn--icon" data-action="edit" data-id="${cert.id}" title="Editar certificado" aria-label="Editar certificado">
+              <i class="ph ph-pencil-simple"></i>
+            </button>
+            <button type="button" class="btn btn--icon" data-action="delete" data-id="${cert.id}" title="Excluir" aria-label="Excluir">
               <i class="ph ph-trash"></i>
             </button>
           </div>
@@ -763,7 +848,14 @@ async function initDashboard() {
       a.download = cert.fileName || `${cert.name}.jpg`;
       a.click();
     }
-
+    if (action === "edit") {
+      editCertId.value = cert.id;
+      editCertName.value = cert.name;
+      editCertCategory.value = cert.category;
+      editCertHours.value = cert.hours;
+      editCertFile.value = "";
+      editCertModal.showModal();
+    }
     if (action === "delete") {
       await deleteLocalCert(id);
       certificates = certificates.filter((c) => c.id !== id);
