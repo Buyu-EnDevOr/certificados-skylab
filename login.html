@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Entrar | Chronos Acadêmico</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="login">
+
+  <main class="auth-layout centered">
+    <section class="glass-card auth-card stack">
+      <div class="brand-pill">
+        <span class="status-dot"></span>
+        <i class="ph-fill ph-graduation-cap"></i>
+        <span>CHRONOS × OBSIDIAN</span>
+      </div>
+
+      <h1 class="balance">Bem-vindo de volta.</h1>
+      <p class="pretty">
+        Acesse seu painel de horas complementares sincronizado com criptografia AES-256 e com o seu Vault do Obsidian.
+      </p>
+
+      <div id="auth-alert" class="alert-box" hidden></div>
+
+      <button type="button" id="btn-google-login" class="btn btn--google">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="Google" />
+        <span>Entrar com Conta Google</span>
+      </button>
+
+      <div class="auth-divider">
+        <span>Primeiro acesso?</span>
+      </div>
+
+      <a href="cadastro.html" class="btn btn--ghost" style="width: 100%;">
+        <i class="ph ph-user-plus"></i>
+        <span>Criar conta e configurar cota do curso</span>
+      </a>
+
+      <p id="env-status" class="mono-tag"></p>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -3,84 +3,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chronos | Repositório de Horas Complementares</title>
-  
-  <!-- Fontes: Inter (UI) + JetBrains Mono (Dados/Métricas) -->
+  <title>Painel | Chronos × Obsidian</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  
-  <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
-  
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body data-page="dashboard">
 
-  <!-- TELA DE LOGIN -->
-  <section id="auth-view" class="auth-layout centered">
-    <div class="glass-card auth-card stack">
-      <div class="brand-pill">
-        <span class="status-dot"></span>
-        <i class="ph-fill ph-graduation-cap"></i>
-        <span>CHRONOS ACADÊMICO</span>
-      </div>
-
-      <h1 class="balance">Suas horas complementares sob controle total.</h1>
-      <p class="pretty">
-        Salve seus certificados na nuvem, visualize quanto falta para bater a cota da faculdade em tempo real e baixe seus comprovantes quando precisar.
-      </p>
-
-      <button type="button" id="btn-google-login" class="btn btn--google">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="Logo Google" />
-        <span>Entrar com Conta Google</span>
-      </button>
-
-      <p id="env-status" class="mono-tag">
-        Modo Local IndexedDB ativo (adicione seu firebaseConfig no app.js para nuvem)
-      </p>
-    </div>
-  </section>
-
-  <!-- APLICAÇÃO PRINCIPAL -->
-  <div id="app-view" class="app-layout" hidden>
-    <!-- HEADER -->
+  <div class="app-layout">
+    <!-- TOPBAR -->
     <header class="topbar glass-card">
       <div class="cluster">
         <div class="brand-icon">
           <i class="ph-fill ph-student"></i>
         </div>
         <div>
-          <h2 class="topbar__title">Chronos</h2>
-          <span id="user-display-email" class="topbar__subtitle">estudante@universidade.edu.br</span>
+          <h2 id="user-course-title" class="topbar__title">Chronos Acadêmico</h2>
+          <span id="user-display-email" class="topbar__subtitle">Carregando...</span>
         </div>
       </div>
 
       <div class="cluster">
-        <button type="button" id="btn-open-quota" class="btn btn--ghost" aria-label="Alterar cota da faculdade">
+        <!-- Botão para Conectar Pasta Local do Obsidian Vault -->
+        <button type="button" id="btn-link-obsidian" class="btn btn--obsidian" title="Sincronizar direto com pasta do Obsidian">
+          <i class="ph-fill ph-notebook"></i>
+          <span id="obsidian-status-text">Vincular Pasta Obsidian</span>
+        </button>
+
+        <button type="button" id="btn-open-quota" class="btn btn--ghost">
           <i class="ph ph-sliders-horizontal"></i>
           <span>Meta: <strong id="header-quota-val" class="mono-text">200h</strong></span>
         </button>
-        <button type="button" id="btn-logout" class="btn btn--icon" aria-label="Sair da conta" title="Sair">
+
+        <button type="button" id="btn-logout" class="btn btn--icon" title="Sair da conta" aria-label="Sair da conta">
           <i class="ph ph-sign-out"></i>
         </button>
       </div>
     </header>
 
-    <!-- DASHBOARD -->
+    <!-- CONTEÚDO PRINCIPAL -->
     <main class="main-grid center">
       
       <!-- COLUNA 1: GRÁFICO E STATUS DA COTA -->
-      <section class="glass-card widget metrics-panel stack" aria-live="polite">
+      <section class="glass-card widget stack" aria-live="polite">
         <div class="panel-header cluster">
           <div>
             <h3>Progresso da Cota</h3>
-            <p class="text-dim">Cálculo automático de integralização</p>
+            <p class="text-dim">Criptografia AES-GCM + Índices Obsidian</p>
           </div>
           <span id="status-badge" class="badge">Em andamento</span>
         </div>
 
-        <!-- Gráfico SVG Circular -->
         <div class="chart-box centered">
           <svg class="ring-svg" width="220" height="220" viewBox="0 0 220 220">
             <defs>
@@ -98,7 +73,6 @@
           </div>
         </div>
 
-        <!-- Métricas Numéricas -->
         <div class="stats-grid">
           <div class="stat-item">
             <span class="stat-item__label">Computadas</span>
@@ -115,17 +89,17 @@
         </div>
       </section>
 
-      <!-- COLUNA 2: UPLOAD DE CERTIFICADO -->
-      <section class="glass-card widget upload-panel stack">
+      <!-- COLUNA 2: ADICIONAR CERTIFICADO -->
+      <section class="glass-card widget stack">
         <div class="panel-header">
-          <h3>Adicionar Certificado</h3>
-          <p class="text-dim">Envie o PDF ou imagem para contabilizar horas</p>
+          <h3>Novo Certificado</h3>
+          <p class="text-dim">Gera nota Markdown no Obsidian + Backup local + Metadado criptografado no Firestore</p>
         </div>
 
-        <form id="cert-form" class="form-stack stack">
+        <form id="cert-form" class="stack">
           <div class="field">
-            <label for="cert-name" class="field__label">Nome do Curso ou Evento</label>
-            <input type="text" id="cert-name" class="field__input" placeholder="Ex: Semana da Administração, Curso Python..." required />
+            <label for="cert-name" class="field__label">Título da Atividade ou Evento</label>
+            <input type="text" id="cert-name" class="field__input" placeholder="Ex: Semana Acadêmica de Administração" required />
           </div>
 
           <div class="form-row">
@@ -134,72 +108,81 @@
               <select id="cert-category" class="field__input">
                 <option value="Ensino">Ensino / Curso</option>
                 <option value="Extensão">Extensão / Evento</option>
-                <option value="Pesquisa">Pesquisa / Iniciação</option>
-                <option value="Estágio/Monitoria">Monitoria / Estágio</option>
+                <option value="Pesquisa">Pesquisa / Artigo</option>
+                <option value="Monitoria">Monitoria / Estágio</option>
               </select>
             </div>
 
             <div class="field">
-              <label for="cert-hours" class="field__label">Horas Validadas</label>
-              <input type="number" id="cert-hours" class="field__input mono-text" min="1" max="1000" placeholder="Ex: 15" required />
+              <label for="cert-hours" class="field__label">Carga Horária (h)</label>
+              <input type="number" id="cert-hours" class="field__input mono-text" min="1" max="1000" placeholder="Ex: 20" required />
             </div>
           </div>
 
           <div class="field">
-            <span class="field__label">Arquivo do Comprovante (PDF, PNG, JPG)</span>
+            <span class="field__label">Comprovante (PDF, PNG, JPG)</span>
             <label for="cert-file" class="dropzone">
               <i class="ph-duotone ph-cloud-arrow-up dropzone__icon"></i>
-              <span id="dropzone-text" class="dropzone__title">Toque para anexar ou arraste o certificado</span>
-              <span class="dropzone__hint">Armazenado com segurança para download futuro</span>
+              <span id="dropzone-text" class="dropzone__title">Toque para selecionar ou arraste o certificado</span>
+              <span class="dropzone__hint">Salvo na pasta do seu Obsidian Vault e no banco local</span>
               <input type="file" id="cert-file" accept=".pdf,image/*" class="sr-only" required />
             </label>
           </div>
 
           <button type="submit" class="btn btn--primary">
             <i class="ph-bold ph-plus-circle"></i>
-            <span>Computar Horas & Guardar Arquivo</span>
+            <span>Computar Horas & Salvar no Obsidian</span>
           </button>
         </form>
       </section>
 
-      <!-- LINHA INFERIOR: COFRE / REPOSITÓRIO DE CERTIFICADOS -->
+      <!-- COFRE DE CERTIFICADOS -->
       <section class="glass-card widget vault-panel stack">
         <div class="vault-header cluster">
           <div>
-            <h3>Cofre de Certificados</h3>
-            <p class="text-dim">Baixe seus comprovantes a qualquer momento</p>
+            <h3>Repositório de Certificados</h3>
+            <p class="text-dim">Baixe o PDF/Imagem original, exporte a nota .md ou abra direto no Obsidian</p>
           </div>
 
           <div class="search-field">
             <i class="ph ph-magnifying-glass"></i>
-            <input type="search" id="search-input" placeholder="Filtrar certificados..." aria-label="Filtrar certificados" />
+            <input type="search" id="search-input" placeholder="Buscar certificado..." aria-label="Buscar certificado" />
           </div>
         </div>
 
-        <div id="vault-grid" class="vault-grid" role="list">
-          <!-- Cards injetados pelo JavaScript -->
-        </div>
+        <div id="vault-grid" class="vault-grid" role="list"></div>
       </section>
 
     </main>
   </div>
 
-  <!-- MODAL NATIVO PARA DEFINIR COTA DA FACULDADE -->
+  <!-- MODAL PARA EDITAR META E VAULT -->
   <dialog id="quota-modal" class="modal glass-card">
     <form id="quota-form" method="dialog" class="stack">
       <div class="panel-header cluster">
-        <h3>Cota da Faculdade</h3>
-        <button type="button" id="btn-close-modal" class="btn btn--icon" aria-label="Fechar janela">
+        <h3>Configurações Acadêmicas</h3>
+        <button type="button" id="btn-close-modal" class="btn btn--icon" aria-label="Fechar">
           <i class="ph ph-x"></i>
         </button>
       </div>
-      <p class="text-dim">Informe o total de horas complementares exigido pelo projeto pedagógico do seu curso:</p>
+
+      <div class="field">
+        <label for="input-course" class="field__label">Curso / Universidade</label>
+        <input type="text" id="input-course" class="field__input" required />
+      </div>
+
+      <div class="field">
+        <label for="input-vault" class="field__label">Nome do Vault no Obsidian</label>
+        <input type="text" id="input-vault" class="field__input" required />
+      </div>
+
       <div class="field">
         <label for="input-quota" class="field__label">Total de Horas Exigidas</label>
-        <input type="number" id="input-quota" class="field__input mono-text" min="10" max="3000" required />
+        <input type="number" id="input-quota" class="field__input mono-text" min="10" max="5000" required />
       </div>
+
       <div class="cluster modal-actions">
-        <button type="submit" class="btn btn--primary">Atualizar Meta</button>
+        <button type="submit" class="btn btn--primary">Salvar Alterações</button>
       </div>
     </form>
   </dialog>
